@@ -1,4 +1,4 @@
-<table>
+<table width="100%" border="0" cellspacing="0" cellpadding="0">
   <tr>
     <td align="left" valign="middle">
       <h1>Grafana FastMCP Server / CLI</h1>
