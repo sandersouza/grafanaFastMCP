@@ -1,7 +1,7 @@
 # Grafana FastMCP Server / CLI
 
 ## Visão geral
-Este repositório contém a implementação em Python de um MCP Server / CLI ( OpenAI Compliance ), com suporte a transportes Server-Sent Events (SSE), Streamable HTTP e STDIO. A aplicação expõe recursos de uma instância Grafana para agentes compatíveis com o protocolo MCP, oferecendo operações para busca, criação e atualização de dashboards, exploração de logs via Loki, consulta de datasources, gestão de alertas, incidentes, turnos de on-call e acesso a dados de observabilidade (Prometheus, Pyroscope, Grafana Sift e muito mais).
+Este repositório contém a implementação em Python FastMCP Server / CLI ( OpenAI Compliance ), com suporte a transportes Server-Sent Events (SSE), Streamable HTTP e STDIO. A aplicação expõe recursos de uma instância Grafana para agentes compatíveis com o protocolo MCP, oferecendo operações para busca, criação e atualização de dashboards, exploração de logs via Loki, consulta de datasources, gestão de alertas, incidentes, turnos de on-call e acesso a dados de observabilidade (Prometheus, Pyroscope, Grafana Sift e muito mais).
 
 ## Estrutura do projeto
 Todo o código-fonte fica no diretório `app/`, deixando a raiz do repositório reservada para arquivos de configuração (como `.env`, `Dockerfile`, `requirements.txt` e este `README`). A organização completa é:
