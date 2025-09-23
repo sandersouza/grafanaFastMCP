@@ -28,7 +28,7 @@ Todo o código-fonte fica no diretório `app/`, deixando a raiz do repositório 
 └── pytest.ini                 # Configuração do pytest
 ```
 
-Consulte `RELEASE.md` para detalhes das versões publicadas.
+Consulte [release.md](./release.md) para detalhes das versões publicadas.
 
 Cada submódulo em `app/tools/` registra um conjunto de ferramentas MCP, abrangendo desde administração de usuários até consultas de observabilidade e automação de incidentes.
 
