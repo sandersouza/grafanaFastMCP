@@ -19,5 +19,3 @@
 - Script `run_app.py` para empacotamento com PyInstaller.
 - Makefile reorganizado (`make venv`, `make local`, `make package`) e STDIO como transporte padrão.
 - Testes automatizados para ferramentas de busca e Asserts garantindo o contrato MCP.
-
-Boa publicação! 🎉
