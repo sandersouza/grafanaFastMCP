@@ -1,5 +1,5 @@
 <a href="https://link.mercadopago.com.br/buymecoke">
-  <img align="right" src="donation.png" alt="Me compre um café!" width="140">
+  <img align="right" valign="bottom" src="donation.png" alt="Me compre um café!" width="140">
 </a>
 
 # Grafana FastMCP Server / CLI
