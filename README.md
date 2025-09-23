@@ -1,15 +1,7 @@
-<table width="100%" border="0" cellspacing="0" cellpadding="0">
-  <tr>
-    <td align="left" valign="middle">
-      <h1>Grafana FastMCP Server / CLI</h1>
-    </td>
-    <td align="right" valign="middle">
-      <a href="https://link.mercadopago.com.br/buymecoke">
-        <img src="donation.png" alt="Me compre um café!" width="140">
-      </a>
-    </td>
-  </tr>
-</table>
+<a href="https://link.mercadopago.com.br/buymecoke">
+  <img align="right" src="donation.png" alt="Me compre um café!" width="140">
+</a>
+<p align="left"><h1>Grafana FastMCP Server / CLI<h1></p>
 
 ## Visão geral
 Python FastMCP Server / CLI ( OpenAI Compliance ), com suporte a transportes Server-Sent Events (SSE), Streamable HTTP e STDIO. A aplicação expõe recursos de uma instância Grafana para agentes compatíveis com o protocolo MCP, oferecendo operações para busca, criação e atualização de dashboards, exploração de logs via Loki, consulta de datasources, gestão de alertas, incidentes, turnos de on-call e acesso a dados de observabilidade (Prometheus, Pyroscope, Grafana Sift e muito mais).
