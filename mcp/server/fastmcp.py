@@ -9,7 +9,18 @@ import logging
 import sys
 from dataclasses import dataclass, field
 from types import SimpleNamespace
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, get_args, get_origin
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    get_args,
+    get_origin,
+)
 
 
 @dataclass
@@ -57,8 +68,16 @@ def _annotation_to_schema(annotation: Any) -> Dict[str, Any]:
             return {"type": "boolean"}
         if lower in {"float", "double"}:
             return {"type": "number"}
-        if lower.startswith(("list[", "list", "sequence[", "sequence")):
-            return {"type": "array"}
+        if lower.startswith(("list[", "sequence[")):
+            open_bracket = normalized.find("[")
+            close_bracket = normalized.rfind("]")
+            item_annotation: Optional[str] = None
+            if open_bracket != -1 and close_bracket != -1 and close_bracket > open_bracket + 1:
+                item_annotation = normalized[open_bracket + 1 : close_bracket]
+            items_schema = _annotation_to_schema(item_annotation) if item_annotation else {}
+            return {"type": "array", "items": items_schema or {}}
+        if lower in {"list", "sequence"}:
+            return {"type": "array", "items": {}}
         if lower.startswith(("dict[", "dict", "mapping[", "mapping")):
             return {"type": "object"}
         return {}
@@ -83,8 +102,19 @@ def _annotation_to_schema(annotation: Any) -> Dict[str, Any]:
         return {"type": "integer"}
     if annotation is float or (origin is float and not args):
         return {"type": "number"}
-    if annotation in {list, List} or origin in {list, List}:
-        return {"type": "array"}
+    array_origins: Tuple[Any, ...] = (list, List, Sequence)
+    if annotation in array_origins or origin in array_origins:
+        item_schema: Dict[str, Any] = {}
+        if args:
+            if len(args) == 1:
+                item_schema = _annotation_to_schema(args[0]) or {}
+            else:
+                item_schema = {
+                    "anyOf": [schema for schema in (_annotation_to_schema(arg) or {} for arg in args) if schema]
+                }
+                if not item_schema["anyOf"]:
+                    item_schema = {}
+        return {"type": "array", "items": item_schema or {}}
     if annotation in {dict, Dict} or origin in {dict, Dict}:
         return {"type": "object"}
 
