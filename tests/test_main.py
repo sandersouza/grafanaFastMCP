@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -189,3 +190,47 @@ def test_main_logs_when_stdio_transport_ignores_base_path(
 
     assert app.run_calls == [("stdio", None)]
     assert "Ignoring base path" in caplog.text
+
+
+def test_main_frozen_defaults_to_stdio(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    class DummyApp:
+        def __init__(self) -> None:
+            self.settings = SimpleNamespace(
+                sse_path="/sse",
+                message_path="/messages/",
+                streamable_http_path="/stream",
+                mount_path="/mount",
+            )
+            self.run_calls: list[tuple[str, str | None]] = []
+
+        def run(self, transport: str, *, mount_path: str | None = None) -> None:
+            self.run_calls.append((transport, mount_path))
+
+    app = DummyApp()
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(main_module, "create_app", lambda **kwargs: app)
+    monkeypatch.setattr(main_module.sys, "frozen", True, raising=False)
+
+    for key in [
+        "GRAFANA_URL",
+        "GRAFANA_SERVICE_ACCOUNT_TOKEN",
+        "GRAFANA_API_KEY",
+        "GRAFANA_USERNAME",
+        "GRAFANA_PASSWORD",
+        "GRAFANA_ACCESS_TOKEN",
+        "GRAFANA_ID_TOKEN",
+        "ENV_FILE",
+        "STREAMABLE_HTTP_PATH",
+        "BASE_PATH",
+        "APP_ADDRESS",
+        "LOG_LEVEL",
+    ]:
+        monkeypatch.delenv(key, raising=False)
+
+    monkeypatch.setenv("TRANSPORT", "sse")
+
+    main_module.main([])
+
+    assert app.run_calls == [("stdio", None)]
+    assert os.environ["TRANSPORT"] == "stdio"

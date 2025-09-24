@@ -1,16 +1,15 @@
-"""Minimal stub of the FastMCP server used by the tests.
-
-This is not a full implementation of the real package, but it is sufficient to
-exercise the surrounding application logic under Python 3.9 where the real
-package is unavailable.
-"""
+"""Minimal FastMCP shim with basic STDIO support for Python 3.9 runtimes."""
 
 from __future__ import annotations
 
+import asyncio
 import inspect
-from dataclasses import dataclass
+import json
+import logging
+import sys
+from dataclasses import dataclass, field
 from types import SimpleNamespace
-from typing import Any, Awaitable, Callable, Dict, List, Optional, get_args, get_origin
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, get_args, get_origin
 
 
 @dataclass
@@ -29,6 +28,7 @@ class ToolDefinition:
     description: str
     inputSchema: Dict[str, Any]
     function: Callable[..., Awaitable[Any]]
+    signature: inspect.Signature = field(repr=False)
 
 
 def _annotation_to_schema(annotation: Any) -> Dict[str, Any]:
@@ -121,6 +121,7 @@ class FastMCP:
             message_path=message_path,
             streamable_http_path=streamable_http_path,
         )
+        self._logger = logging.getLogger(__name__)
 
     # Decorator -----------------------------------------------------------------
     def tool(
@@ -140,6 +141,7 @@ class FastMCP:
                 description=description,
                 inputSchema=schema,
                 function=func,
+                signature=inspect.signature(func),
             )
             self._tools.append(tool_def)
             return func
@@ -153,6 +155,8 @@ class FastMCP:
     # Execution -----------------------------------------------------------------
     def run(self, transport: str, *, mount_path: Optional[str] = None) -> None:
         self._run_calls.append((transport, mount_path))
+        if transport == "stdio":
+            self._run_stdio()
 
     # Utilities -----------------------------------------------------------------
     def streamable_http_app(self) -> "FastMCP":
@@ -160,6 +164,11 @@ class FastMCP:
 
     async def run_streamable_http_async(self) -> None:  # pragma: no cover - patched in tests
         raise RuntimeError("Streamable HTTP transport not implemented in stub")
+
+    # Internal helpers -----------------------------------------------------------
+    def _run_stdio(self) -> None:
+        session = _STDIOHandler(self)
+        session.run()
 
     # Schema generation ----------------------------------------------------------
     def _build_schema(self, func: Callable[..., Awaitable[Any]]) -> Dict[str, Any]:
@@ -188,3 +197,252 @@ class FastMCP:
 
 
 __all__ = ["Context", "FastMCP", "ToolDefinition"]
+
+
+# ---------------------------------------------------------------------------
+# STDIO implementation (best-effort, not full MCP compatibility)
+
+MCP_PROTOCOL_VERSION = "2025-06-18"
+
+
+class _STDIOHandler:
+    """Lightweight STDIO transport for the Python 3.9 shim."""
+
+    def __init__(self, app: FastMCP) -> None:
+        self._app = app
+        self._logger = logging.getLogger("mcp.stdio")
+        self._tool_map: Dict[str, ToolDefinition] = {tool.name: tool for tool in app._tools}
+        self._context = Context(request_context=SimpleNamespace(session=SimpleNamespace()))
+        self._initialized = False
+
+    # Public API -----------------------------------------------------------------
+    def run(self) -> None:
+        stdin = sys.stdin
+        for raw_line in stdin:
+            line = raw_line.strip()
+            if not line:
+                continue
+            try:
+                message = json.loads(line)
+            except json.JSONDecodeError as exc:
+                self._logger.warning("Failed to parse STDIO message: %s", exc)
+                self._write_error(None, -32700, f"Parse error: {exc}")
+                continue
+
+            try:
+                response = self._handle_message(message)
+                if response is not None:
+                    self._write_response(response)
+            except SystemExit:
+                raise
+            except Exception as err:  # pragma: no cover - defensive
+                self._logger.error("Unhandled STDIO error: %s", err, exc_info=True)
+                if isinstance(message, dict) and "id" in message:
+                    self._write_error(message.get("id"), -32603, str(err))
+
+    # Message handling -----------------------------------------------------------
+    def _handle_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        if not isinstance(message, dict):
+            return None
+
+        if "method" not in message:
+            return None
+
+        if "id" not in message:
+            self._handle_notification(message)
+            return None
+
+        return self._handle_request(message)
+
+    def _handle_notification(self, message: Dict[str, Any]) -> None:
+        method = message.get("method")
+        if method == "logging/setLevel":
+            params = message.get("params") or {}
+            level = params.get("level")
+            if isinstance(level, str):
+                try:
+                    logging.getLogger().setLevel(level.upper())
+                except Exception:  # pragma: no cover - defensive
+                    self._logger.debug("Failed to set log level to %s", level, exc_info=True)
+        # Other notifications are currently ignored.
+
+    def _handle_request(self, message: Dict[str, Any]) -> Dict[str, Any]:
+        method = message.get("method")
+        request_id = message.get("id")
+        params = message.get("params") or {}
+
+        try:
+            if method == "initialize":
+                result = self._handle_initialize(params)
+            elif method == "ping":
+                result = {}
+            elif method == "tools/list":
+                result = self._handle_tools_list(params)
+            elif method == "tools/call":
+                result = self._handle_tools_call(params)
+            elif method == "logging/setLevel":
+                self._handle_notification(message)
+                result = {}
+            else:
+                return self._error_response(request_id, -32601, f"Method '{method}' not implemented")
+        except _JSONRPCError as exc:
+            return self._error_response(request_id, exc.code, exc.message, exc.data)
+        except Exception as err:  # pragma: no cover - defensive
+            self._logger.error("STDIO request failed: %s", err, exc_info=True)
+            return self._error_response(request_id, -32603, str(err))
+
+        return {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "result": result,
+        }
+
+    # Individual request handlers ------------------------------------------------
+    def _handle_initialize(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        protocol = params.get("protocolVersion") or MCP_PROTOCOL_VERSION
+        self._initialized = True
+        capabilities = {
+            "tools": {"listChanged": False},
+        }
+        if self._app.debug:
+            capabilities["logging"] = {}
+
+        instructions = self._app.instructions if isinstance(self._app.instructions, str) else None
+        try:
+            from app import __version__ as app_version  # type: ignore
+        except Exception:  # pragma: no cover - defensive
+            app_version = "unknown"
+
+        server_info = {
+            "name": self._app.name or "FastMCP",
+            "version": app_version,
+        }
+
+        return {
+            "protocolVersion": protocol,
+            "capabilities": capabilities,
+            "serverInfo": server_info,
+            "instructions": instructions,
+        }
+
+    def _handle_tools_list(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        if not self._initialized:
+            raise _JSONRPCError(-32600, "Server not initialized")
+
+        tools_payload = []
+        for tool in self._app._tools:
+            entry = {
+                "name": tool.name,
+                "title": tool.title,
+                "description": tool.description,
+                "inputSchema": tool.inputSchema,
+            }
+            annotations = {}
+            if tool.title:
+                annotations["title"] = tool.title
+            if annotations:
+                entry["annotations"] = annotations
+            tools_payload.append(entry)
+
+        return {"tools": tools_payload}
+
+    def _handle_tools_call(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        if not self._initialized:
+            raise _JSONRPCError(-32600, "Server not initialized")
+
+        name = params.get("name")
+        if not isinstance(name, str):
+            raise _JSONRPCError(-32602, "Tool name must be a string")
+
+        tool = self._tool_map.get(name)
+        if tool is None:
+            raise _JSONRPCError(-32601, f"Tool '{name}' not found")
+
+        arguments = params.get("arguments") or {}
+        if not isinstance(arguments, dict):
+            raise _JSONRPCError(-32602, "Tool arguments must be an object")
+
+        bound_arguments = self._prepare_tool_arguments(tool, arguments)
+        result = asyncio.run(self._invoke_tool(tool, bound_arguments))
+        content, structured = self._format_tool_result(result)
+
+        response: Dict[str, Any] = {
+            "content": content,
+            "isError": False,
+        }
+        if structured is not None:
+            response["structuredContent"] = structured
+        return response
+
+    # Tool helpers ----------------------------------------------------------------
+    def _prepare_tool_arguments(self, tool: ToolDefinition, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        signature = tool.signature
+        prepared: Dict[str, Any] = {}
+
+        for name, parameter in signature.parameters.items():
+            if name == "ctx":
+                continue
+
+            if parameter.kind in {inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD}:
+                continue
+
+            if name in arguments:
+                prepared[name] = arguments[name]
+            elif parameter.default is inspect._empty:
+                raise _JSONRPCError(-32602, f"Missing required argument: {name}")
+
+        # Include any unexpected arguments that the tool can accept via **kwargs.
+        has_var_kwargs = any(
+            param.kind is inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values()
+        )
+        if has_var_kwargs:
+            for key, value in arguments.items():
+                if key not in prepared and key != "ctx":
+                    prepared[key] = value
+
+        return prepared
+
+    async def _invoke_tool(self, tool: ToolDefinition, arguments: Dict[str, Any]) -> Any:
+        kwargs = dict(arguments)
+        if "ctx" in tool.signature.parameters:
+            kwargs["ctx"] = self._context
+        return await tool.function(**kwargs)  # type: ignore[arg-type]
+
+    def _format_tool_result(self, result: Any) -> Tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
+        structured: Optional[Dict[str, Any]] = None
+        if isinstance(result, dict):
+            structured = result
+
+        if isinstance(result, str):
+            text_output = result
+        else:
+            try:
+                text_output = json.dumps(result, ensure_ascii=False, indent=2)
+            except (TypeError, ValueError):
+                text_output = str(result)
+
+        content_block = {"type": "text", "text": text_output}
+        return [content_block], structured
+
+    # Response helpers -----------------------------------------------------------
+    def _write_response(self, response: Dict[str, Any]) -> None:
+        sys.stdout.write(json.dumps(response, ensure_ascii=False) + "\n")
+        sys.stdout.flush()
+
+    def _write_error(self, request_id: Any, code: int, message: str, data: Optional[Any] = None) -> None:
+        sys.stdout.write(json.dumps(self._error_response(request_id, code, message, data), ensure_ascii=False) + "\n")
+        sys.stdout.flush()
+
+    def _error_response(self, request_id: Any, code: int, message: str, data: Optional[Any] = None) -> Dict[str, Any]:
+        error: Dict[str, Any] = {"code": code, "message": message}
+        if data is not None:
+            error["data"] = data
+        return {"jsonrpc": "2.0", "id": request_id, "error": error}
+
+
+class _JSONRPCError(RuntimeError):
+    def __init__(self, code: int, message: str, data: Optional[Any] = None) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.data = data

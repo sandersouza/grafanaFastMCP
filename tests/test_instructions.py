@@ -19,7 +19,7 @@ def clear_cache():
 def test_load_instructions_defaults_to_builtin(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MCP_INSTRUCTIONS_PATH", raising=False)
     value = load_instructions()
-    assert "General Guidance" in value
+    assert "overwrite:true" in value
 
 
 def test_load_instructions_uses_env_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

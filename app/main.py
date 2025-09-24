@@ -6,6 +6,7 @@ import argparse
 import logging
 import os
 from pathlib import Path
+import sys
 from typing import Tuple
 
 from dotenv import find_dotenv, load_dotenv
@@ -75,7 +76,8 @@ def main(argv: list[str] | None = None) -> None:
     pre_args, _ = parser.parse_known_args(argv)
 
     project_root = Path(__file__).resolve().parent.parent
-    default_env = project_root / ".env"
+    running_frozen = bool(getattr(sys, "frozen", False))
+    default_env = None if running_frozen else project_root / ".env"
 
     def _resolve_candidate(value: str | Path | None) -> Path | None:
         if not value:
@@ -84,7 +86,7 @@ def main(argv: list[str] | None = None) -> None:
 
     selected_env: Path | None = None
 
-    if default_env.exists():
+    if default_env and default_env.exists():
         selected_env = default_env.resolve()
     else:
         fallback_candidates: list[Path | None] = [
@@ -119,6 +121,12 @@ def main(argv: list[str] | None = None) -> None:
     parser.set_defaults(**{key: value for key, value in env_defaults.items() if value })
 
     args = parser.parse_args(argv)
+
+    argv_list = list(argv) if argv is not None else []
+    transport_overridden = any(arg.startswith("--transport") for arg in argv_list)
+    if running_frozen and not transport_overridden:
+        args.transport = "stdio"
+        os.environ["TRANSPORT"] = "stdio"
 
     if args.version:
         print(__version__)
