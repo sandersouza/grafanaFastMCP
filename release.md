@@ -1,5 +1,13 @@
 # Release Notes
 
+## Unreleased
+
+### Highlights
+- README agora detalha como preparar o virtualenv, instalar os utilitários de teste e executar a suíte `pytest` com relatório de cobertura, simplificando a validação local.
+
+### Itens adicionais
+- A suíte atual de 32 testes (`pytest --cov=.`) foi executada, registrando cobertura global de ~40%. Os módulos mais completos incluem `app/config.py` (85%), `app/instructions.py` (93%) e `app/tools/search.py` (66%), enquanto `app/main.py`, `app/server.py`, `run_app.py` e as ferramentas extensas (`app/tools/dashboard.py`, `app/tools/alerting.py`) seguem como prioridades de novos testes.
+
 ## v1.0.1 – 2025-09-23
 
 ### Highlights

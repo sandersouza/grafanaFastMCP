@@ -105,6 +105,27 @@ Após executar `make package`, o binário resultante pode ser distribuído como 
 
 Os alvos de containers respeitam variáveis como `IMAGE_NAME`, `CONTAINER_NAME`, `APP_PORT`, `TRANSPORT` e `ENV_FILE`, permitindo adaptar os comandos ao seu fluxo de trabalho.
 
+## Testes automatizados
+
+O projeto utiliza `pytest` para validar fluxos críticos como carregamento de configuração, leitura das instruções padrão, negociação do transporte Streamable HTTP e ferramentas MCP para buscas e Grafana Asserts. Para rodar a suíte localmente:
+
+1. Crie (ou atualize) o ambiente virtual com `make venv`.
+2. Ative o virtualenv (`source .venv/bin/activate`) ou invoque os binários diretamente em `.venv/bin/`.
+3. Execute `pytest` na raiz do repositório para disparar os 32 testes atuais.
+
+O comando também está disponível via `python -m pytest` caso prefira não expor o executável instalado no virtualenv. Mantê-lo em dia ajuda a garantir compatibilidade contínua com os conectores MCP suportados.
+
+### Cobertura de testes com `pytest-cov`
+
+Para gerar relatórios de cobertura, instale o plugin opcional `pytest-cov` dentro do virtualenv e execute a suíte com a flag `--cov`:
+
+```bash
+pip install pytest pytest-cov
+pytest --cov=. --cov-report term-missing
+```
+
+A execução atual produz um resumo com cobertura global de aproximadamente **40%**, destacando pontos fortes como `app/config.py` (85%), `app/instructions.py` (93%) e `app/tools/search.py` (66%). Também evidencia lacunas importantes: `app/main.py`, `app/server.py` e `run_app.py` ainda não são exercitados (0%), enquanto módulos volumosos como `app/tools/dashboard.py` (16%) e `app/tools/alerting.py` (17%) merecem novos testes. Use esses dados para priorizar cenários críticos nas próximas contribuições.
+
 ## Ferramentas disponíveis
 
 ### Admin
