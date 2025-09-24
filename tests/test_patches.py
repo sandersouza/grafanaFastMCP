@@ -140,3 +140,29 @@ def test_ensure_sse_post_alias_patch_skips_when_fastmcp_missing(monkeypatch: pyt
 def test_ensure_sse_post_alias_patch_idempotent_flag(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(patches, "_PATCH_SSE_ALIAS_APPLIED", True)
 
+    patches.ensure_sse_post_alias_patch()
+
+    assert patches._PATCH_SSE_ALIAS_APPLIED is True
+
+
+def test_set_streamable_http_instructions_assigns_attribute(monkeypatch: pytest.MonkeyPatch) -> None:
+    class DummyTransport:
+        pass
+
+    monkeypatch.setattr(patches, "StreamableHTTPServerTransport", DummyTransport)
+    patches.set_streamable_http_instructions("  example ")
+
+    assert getattr(DummyTransport, "_fastmcp_preprompt_text") == "example"
+    assert patches._STREAMABLE_HTTP_INSTRUCTIONS == "example"
+
+
+def test_ensure_streamable_http_instructions_patch_noop_without_method(monkeypatch: pytest.MonkeyPatch) -> None:
+    class DummyTransport:
+        pass
+
+    monkeypatch.setattr(patches, "StreamableHTTPServerTransport", DummyTransport)
+    monkeypatch.setattr(patches, "_PATCH_STREAMABLE_INSTRUCTIONS_APPLIED", False)
+
+    patches.ensure_streamable_http_instructions_patch()
+
+    assert patches._PATCH_STREAMABLE_INSTRUCTIONS_APPLIED is False
