@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 import pytest
 
+import app.tools as tools
 from app.tools import register_all
+from app.tools.availability import GrafanaCapabilities
 from app.tools.search import (
     _fetch_dashboard,
     _fetch_resource,
@@ -13,6 +15,15 @@ from app.tools.search import (
     _resolve_dashboard_lookup,
 )
 from mcp.server.fastmcp import FastMCP
+
+
+@pytest.fixture(autouse=True)
+def _allow_all_capabilities(monkeypatch: pytest.MonkeyPatch) -> None:
+    capabilities = GrafanaCapabilities(
+        datasource_types=frozenset({"loki", "prometheus", "pyroscope"}),
+        plugin_ids=frozenset({"grafana-irm-app", "grafana-asserts-app", "grafana-ml-app"}),
+    )
+    monkeypatch.setattr(tools, "_resolve_capabilities", lambda: capabilities)
 
 
 def test_search_tool_is_registered() -> None:
