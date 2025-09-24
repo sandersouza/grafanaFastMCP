@@ -53,11 +53,14 @@ def _parse_dashboard_url(url: str) -> Tuple[Optional[str], Optional[str]]:
     return uid, numeric_id
 
 
+DashboardIdentifier = Mapping[str, Any] | str | int
+
+
 def _resolve_dashboard_lookup(
     *,
     uid: Optional[str],
     id_value: int | str | None,
-    ids: Sequence[Any] | None,
+    ids: Sequence[DashboardIdentifier] | None,
     url: Optional[str],
     uri: Optional[str],
     item: Mapping[str, Any] | None,
@@ -143,7 +146,7 @@ async def _fetch_resource(
     resource_type: Optional[str],
     id_value: int | str | None,
     uid: Optional[str],
-    ids: Sequence[Any] | None,
+    ids: Sequence[DashboardIdentifier] | None,
     url: Optional[str],
     uri: Optional[str],
     item: Mapping[str, Any] | None,
@@ -236,7 +239,7 @@ def register(app: FastMCP) -> None:
         *,
         id: str,
         uid: Optional[str] = None,
-        ids: Optional[list[Any]] = None,
+        ids: Optional[Sequence[DashboardIdentifier]] = None,
         url: Optional[str] = None,
         uri: Optional[str] = None,
         type: Optional[str] = None,

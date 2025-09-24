@@ -100,7 +100,17 @@ def test_fetch_schema_defines_array_items_for_ids() -> None:
     assert ids_schema is not None, schema
     assert ids_schema.get("type") == "array"
     assert "items" in ids_schema
-    assert isinstance(ids_schema["items"], dict)
+    items_schema = ids_schema["items"]
+    assert isinstance(items_schema, dict) and items_schema, ids_schema
+
+    if "anyOf" in items_schema:
+        any_of = items_schema["anyOf"]
+        assert isinstance(any_of, list) and any_of, items_schema
+        item_types = {entry.get("type") for entry in any_of if isinstance(entry, dict)}
+    else:
+        item_types = {items_schema.get("type")}
+
+    assert {"string", "integer", "object"}.issubset(item_types)
 
 
 def test_parse_dashboard_url_handles_relative_and_absolute_paths() -> None:

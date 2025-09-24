@@ -7,19 +7,26 @@ import inspect
 import json
 import logging
 import sys
+from collections.abc import Mapping as ABCMapping, Sequence as ABCSequence
 from dataclasses import dataclass, field
 from types import SimpleNamespace
+try:  # pragma: no cover - Python < 3.10 fallback
+    from types import UnionType  # type: ignore[attr-defined]
+except ImportError:  # pragma: no cover - Python 3.9 compatibility
+    UnionType = None  # type: ignore[assignment]
 from typing import (
     Any,
     Awaitable,
     Callable,
     Dict,
     List,
+    Mapping,
     Optional,
     Sequence,
     Tuple,
     get_args,
     get_origin,
+    get_type_hints,
 )
 
 
@@ -85,14 +92,19 @@ def _annotation_to_schema(annotation: Any) -> Dict[str, Any]:
     origin = get_origin(annotation)
     args = get_args(annotation)
 
-    if origin is Optional:  # pragma: no cover - Optional is simply an alias for Union
-        origin = get_origin(args[0]) if args else None
+    union_origin = getattr(__import__("typing"), "Union", None)
+    union_types = {union_origin}
+    if UnionType is not None:
+        union_types.add(UnionType)
 
-    # typing.Optional resolves to typing.Union[..., NoneType]
-    if origin is getattr(__import__("typing"), "Union", None) and type(None) in args:
+    if origin in union_types:
         non_none = [arg for arg in args if arg is not type(None)]  # noqa: E721
+        schemas = [schema for schema in (_annotation_to_schema(arg) or {} for arg in non_none) if schema]
+        if not schemas:
+            return {}
         if len(non_none) == 1:
-            return _annotation_to_schema(non_none[0])
+            return schemas[0]
+        return {"anyOf": schemas}
 
     if annotation in {str, "".__class__}:
         return {"type": "string"}
@@ -102,7 +114,7 @@ def _annotation_to_schema(annotation: Any) -> Dict[str, Any]:
         return {"type": "integer"}
     if annotation is float or (origin is float and not args):
         return {"type": "number"}
-    array_origins: Tuple[Any, ...] = (list, List, Sequence)
+    array_origins: Tuple[Any, ...] = (list, List, Sequence, ABCSequence)
     if annotation in array_origins or origin in array_origins:
         item_schema: Dict[str, Any] = {}
         if args:
@@ -115,7 +127,8 @@ def _annotation_to_schema(annotation: Any) -> Dict[str, Any]:
                 if not item_schema["anyOf"]:
                     item_schema = {}
         return {"type": "array", "items": item_schema or {}}
-    if annotation in {dict, Dict} or origin in {dict, Dict}:
+    mapping_origins: Tuple[Any, ...] = (dict, Dict, Mapping, ABCMapping)
+    if annotation in mapping_origins or origin in mapping_origins:
         return {"type": "object"}
 
     return {}
@@ -205,6 +218,10 @@ class FastMCP:
     # Schema generation ----------------------------------------------------------
     def _build_schema(self, func: Callable[..., Awaitable[Any]]) -> Dict[str, Any]:
         signature = inspect.signature(func)
+        try:
+            type_hints = get_type_hints(func, include_extras=True)
+        except Exception:  # pragma: no cover - defensive fallback
+            type_hints = {}
         properties: Dict[str, Dict[str, Any]] = {}
         required: List[str] = []
 
@@ -214,7 +231,8 @@ class FastMCP:
             if param.kind in {inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD}:
                 continue
 
-            schema = _annotation_to_schema(param.annotation)
+            annotation = type_hints.get(name, param.annotation)
+            schema = _annotation_to_schema(annotation)
             if param.kind is inspect.Parameter.KEYWORD_ONLY and not schema:
                 schema = {}
             properties[name] = schema
