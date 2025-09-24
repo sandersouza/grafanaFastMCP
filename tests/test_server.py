@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
+import sys
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -106,3 +107,68 @@ def test_create_app_configures_fastmcp(monkeypatch: pytest.MonkeyPatch) -> None:
     assert app.kwargs["message_path"] == "/api/v1/messages/"
     assert app.kwargs["streamable_http_path"] == "/api/v1/stream"
     assert app.kwargs["log_level"] == "DEBUG"
+
+
+def test_register_streamable_http_alias_ignores_missing_routes() -> None:
+    class DummyFastMCP:
+        pass
+
+    server._register_streamable_http_alias(DummyFastMCP())  # type: ignore[arg-type]
+
+
+def test_register_streamable_http_alias_adds_route(monkeypatch: pytest.MonkeyPatch) -> None:
+    from starlette.applications import Starlette
+    from starlette.responses import PlainTextResponse
+    from starlette.routing import Route
+    from starlette.testclient import TestClient
+
+    alias_calls: list[str] = []
+
+    class DummyStreamableHTTPASGIApp:
+        def __init__(self, session_manager: object) -> None:
+            self.session_manager = session_manager
+
+        async def __call__(self, scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+            alias_calls.append(scope["path"])
+            response = PlainTextResponse("alias-handled")
+            await response(scope, receive, send)
+
+    module = ModuleType("mcp.server.fastmcp.server")
+    module.StreamableHTTPASGIApp = DummyStreamableHTTPASGIApp
+    monkeypatch.setitem(sys.modules, "mcp.server.fastmcp.server", module)
+
+    class DummyFastMCP:
+        def __init__(self) -> None:
+            self.settings = SimpleNamespace(streamable_http_path="/mcp")
+            self._session_manager = object()
+            self._custom_starlette_routes: list[Route] = []
+
+        def streamable_http_app(self) -> None:
+            return None
+
+    dummy = DummyFastMCP()
+    server._register_streamable_http_alias(dummy)
+    assert len(dummy._custom_starlette_routes) == 1
+
+    alias_route = dummy._custom_starlette_routes[0]
+    assert alias_route.path == "/{prefix}/link_{link_id}/{rest:path}"
+    assert alias_route.methods == {"DELETE", "GET", "HEAD", "POST"}
+
+    base_calls: list[str] = []
+
+    async def base_endpoint(scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+        base_calls.append(scope["path"])
+        response = PlainTextResponse("base")
+        await response(scope, receive, send)
+
+    app = Starlette(routes=[Route("/mcp", endpoint=base_endpoint, methods=["POST"]), alias_route])
+    client = TestClient(app)
+
+    response = client.post("/Grafana/link_123/update_dashboard")
+    assert response.status_code == 200
+    assert response.text == "alias-handled"
+    assert alias_calls == ["/mcp"]
+    assert base_calls == []
+
+    server._register_streamable_http_alias(dummy)
+    assert len(dummy._custom_starlette_routes) == 1
