@@ -33,7 +33,7 @@ def _request_headers(request: Request | None) -> Mapping[str, str]:
 
 
 def _build_config(ctx: Context) -> GrafanaConfig:
-    request = ctx.request_context.request
+    request = getattr(ctx.request_context, "request", None)
     if request is None:
         LOGGER.debug("No HTTP request available in context; using environment configuration only")
         return grafana_config_from_env()

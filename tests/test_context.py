@@ -41,6 +41,27 @@ def test_get_config_without_request_uses_environment(monkeypatch: pytest.MonkeyP
     assert env_calls == 1
 
 
+def test_get_config_when_request_attribute_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    env_calls = 0
+
+    def fake_env() -> GrafanaConfig:
+        nonlocal env_calls
+        env_calls += 1
+        return GrafanaConfig(api_key="env")
+
+    monkeypatch.setattr(context, "grafana_config_from_env", fake_env)
+    monkeypatch.setattr(context, "grafana_config_from_headers", lambda _: GrafanaConfig(api_key="header"))
+
+    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace()))
+
+    result = context.get_grafana_config(ctx)
+    again = context.get_grafana_config(ctx)
+
+    assert result is again
+    assert result.api_key == "env"
+    assert env_calls == 1
+
+
 def test_get_config_prefers_header_values(monkeypatch: pytest.MonkeyPatch) -> None:
     header_config = GrafanaConfig(api_key="header", url="https://headers")
 
