@@ -178,7 +178,7 @@ class FastMCP:
         """Register a tool function with metadata and inferred schema."""
 
         def decorator(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
-            schema = self._normalize_schema(self._build_schema(func))
+            schema = self._build_schema(func)
             tool_def = ToolDefinition(
                 name=name,
                 title=title,
@@ -244,36 +244,6 @@ class FastMCP:
         if required:
             schema["required"] = required
         return schema
-
-    def _normalize_schema(self, schema: Any) -> Dict[str, Any]:
-        """Ensure schemas used for tool parameters are always valid objects."""
-
-        if not isinstance(schema, dict):
-            return {"type": "object", "properties": {}}
-
-        normalized: Dict[str, Any] = dict(schema)
-        schema_type = normalized.get("type")
-
-        if not isinstance(schema_type, str):
-            schema_type = "object"
-            normalized["type"] = schema_type
-
-        if schema_type == "object":
-            properties = normalized.get("properties")
-            if not isinstance(properties, dict):
-                normalized["properties"] = {}
-        elif schema_type == "array":
-            items = normalized.get("items")
-            if isinstance(items, list):
-                normalized["items"] = items[0] if items else {}
-            elif not isinstance(items, dict):
-                normalized["items"] = {}
-
-        required = normalized.get("required")
-        if required is not None and not isinstance(required, list):
-            normalized.pop("required", None)
-
-        return normalized
 
 
 __all__ = ["Context", "FastMCP", "ToolDefinition"]
