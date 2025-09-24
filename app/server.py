@@ -8,7 +8,9 @@ from .instructions import load_instructions
 from .patches import (
     ensure_sse_post_alias_patch,
     ensure_streamable_http_accept_patch,
+    ensure_streamable_http_instructions_patch,
     ensure_streamable_http_server_patch,
+    set_streamable_http_instructions,
 )
 from .tools import register_all
 
@@ -61,8 +63,12 @@ def create_app(
 ) -> FastMCP:
     """Create and configure the FastMCP application."""
 
+    instructions = load_instructions()
+    set_streamable_http_instructions(instructions)
+
     ensure_streamable_http_accept_patch()
     ensure_streamable_http_server_patch()
+    ensure_streamable_http_instructions_patch()
     ensure_sse_post_alias_patch()
 
     normalized_base_path = _normalize_mount_path(base_path)
@@ -75,8 +81,6 @@ def create_app(
         normalized_base_path,
         default_segment="mcp",
     )
-
-    instructions = load_instructions()
 
     app = FastMCP(
         name="mcp-grafana",
