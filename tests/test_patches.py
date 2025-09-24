@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+import builtins
 import sys
-from types import SimpleNamespace
+from contextlib import asynccontextmanager
+from types import ModuleType, SimpleNamespace
 
 import pytest
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import Response
+from starlette.routing import Mount, Route
+from starlette.testclient import TestClient
 
 from app import patches
 
@@ -119,3 +126,17 @@ async def test_ensure_streamable_http_server_patch_overrides_run(monkeypatch: py
 
     patches.ensure_streamable_http_server_patch()
     assert DummyFastMCP.run_streamable_http_async is not original_run
+
+
+def test_ensure_sse_post_alias_patch_skips_when_fastmcp_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(patches, "_PATCH_SSE_ALIAS_APPLIED", False)
+    monkeypatch.delitem(sys.modules, "mcp.server.fastmcp.server", raising=False)
+
+    patches.ensure_sse_post_alias_patch()
+
+    assert patches._PATCH_SSE_ALIAS_APPLIED is False
+
+
+def test_ensure_sse_post_alias_patch_idempotent_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(patches, "_PATCH_SSE_ALIAS_APPLIED", True)
+

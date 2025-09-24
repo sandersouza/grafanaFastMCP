@@ -59,8 +59,8 @@ def test_query_prometheus_range(monkeypatch: pytest.MonkeyPatch, prom_client: Du
             ctx,
             "uid",
             "up",
-            "now-1h",
-            "now",
+            start="now-1h",
+            end="now",
             step_seconds=60,
             query_type="range",
         )
@@ -85,20 +85,30 @@ def test_query_prometheus_range(monkeypatch: pytest.MonkeyPatch, prom_client: Du
         )
 
 
-def test_query_prometheus_instant(prom_client: DummyPrometheusClient, ctx: SimpleNamespace) -> None:
+def test_query_prometheus_instant(monkeypatch: pytest.MonkeyPatch, prom_client: DummyPrometheusClient, ctx: SimpleNamespace) -> None:
     prom_client.responses["/api/v1/query"] = {"status": "success", "data": {"resultType": "vector"}}
+    fixed_now = datetime(2024, 1, 1, tzinfo=timezone.utc)
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz: Optional[timezone] = None) -> datetime:
+            return fixed_now if tz else fixed_now.replace(tzinfo=None)
+
+    monkeypatch.setattr(prometheus, "datetime", FixedDateTime)
     result = asyncio.run(
         prometheus._query_prometheus(
             ctx,
             "uid",
             "up",
-            "now",
+            start=None,
             end=None,
             step_seconds=None,
             query_type="instant",
         )
     )
     assert result["resultType"] == "vector"
+    _, params = prom_client.calls[-1]
+    assert float(params["time"]) == pytest.approx(fixed_now.timestamp())
 
 
 def test_metadata_and_label_helpers(prom_client: DummyPrometheusClient, ctx: SimpleNamespace) -> None:
@@ -127,16 +137,45 @@ def test_metric_names_filters_and_paginates(monkeypatch: pytest.MonkeyPatch, pro
         asyncio.run(prometheus._metric_names(ctx, "uid", None, -1, 1))
 
 
-def test_query_prometheus_requires_end(prom_client: DummyPrometheusClient, ctx: SimpleNamespace) -> None:
+def test_query_prometheus_range_defaults(monkeypatch: pytest.MonkeyPatch, prom_client: DummyPrometheusClient, ctx: SimpleNamespace) -> None:
+    prom_client.responses["/api/v1/query_range"] = {"status": "success", "data": {}}
+    fixed_now = datetime(2024, 1, 1, tzinfo=timezone.utc)
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz: Optional[timezone] = None) -> datetime:
+            return fixed_now if tz else fixed_now.replace(tzinfo=None)
+
+    monkeypatch.setattr(prometheus, "datetime", FixedDateTime)
+    asyncio.run(
+        prometheus._query_prometheus(
+            ctx,
+            "uid",
+            "up",
+            start=None,
+            end=None,
+            step_seconds=None,
+            query_type="range",
+        )
+    )
+    _, params = prom_client.calls[-1]
+    expected_start = (fixed_now - timedelta(minutes=5)).timestamp()
+    expected_end = fixed_now.timestamp()
+    assert float(params["start"]) == pytest.approx(expected_start)
+    assert float(params["end"]) == pytest.approx(expected_end)
+    assert params["step"] == "60"
+
+
+def test_query_prometheus_range_invalid_step(prom_client: DummyPrometheusClient, ctx: SimpleNamespace) -> None:
     with pytest.raises(ValueError):
         asyncio.run(
             prometheus._query_prometheus(
                 ctx,
                 "uid",
                 "up",
-                "now-1h",
-                end=None,
-                step_seconds=60,
+                start="now-1h",
+                end="now",
+                step_seconds=0,
                 query_type="range",
             )
         )

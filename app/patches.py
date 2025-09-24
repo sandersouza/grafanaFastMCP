@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import os
 import logging
+import os
 
 from starlette.requests import Request
 
@@ -18,6 +18,7 @@ LOGGER = logging.getLogger(__name__)
 
 _PATCH_ACCEPT_APPLIED = False
 _PATCH_STREAMABLE_SERVER_APPLIED = False
+_PATCH_SSE_ALIAS_APPLIED = False
 
 
 def _normalize_media_types(accept_header: str) -> list[str]:
@@ -139,4 +140,161 @@ def ensure_streamable_http_server_patch() -> None:
     _PATCH_STREAMABLE_SERVER_APPLIED = True
 
 
-__all__ = ["ensure_streamable_http_accept_patch", "ensure_streamable_http_server_patch"]
+def ensure_sse_post_alias_patch() -> None:
+    """Allow POST requests on the SSE endpoint to deliver JSON-RPC messages."""
+
+    global _PATCH_SSE_ALIAS_APPLIED
+    if _PATCH_SSE_ALIAS_APPLIED:
+        return
+
+    try:
+        from mcp.server.fastmcp.server import FastMCP  # type: ignore[import]
+        from mcp.server.sse import SseServerTransport  # type: ignore[import]
+        import mcp.types as mcp_types  # type: ignore[import]
+        from mcp.shared.message import ServerMessageMetadata, SessionMessage  # type: ignore[import]
+    except (ImportError, SyntaxError) as exc:  # pragma: no cover - depends on runtime env
+        LOGGER.debug("Skipping SSE alias patch: %s", exc)
+        return
+
+    try:
+        from starlette.applications import Starlette
+        from starlette.background import BackgroundTask
+        from starlette.middleware import Middleware
+        from starlette.middleware.authentication import AuthenticationMiddleware
+        from starlette.requests import Request
+        from starlette.responses import Response
+        from starlette.routing import Mount, Route
+    except ImportError as exc:  # pragma: no cover - runtime dependency
+        LOGGER.debug("Starlette import failed, skipping SSE alias patch: %s", exc)
+        return
+
+    try:
+        from pydantic import ValidationError
+    except ImportError as exc:  # pragma: no cover
+        LOGGER.debug("Pydantic not available, skipping SSE alias patch: %s", exc)
+        return
+
+    original_sse_app = FastMCP.sse_app
+
+    def patched_sse_app(self: FastMCP, mount_path: str | None = None):
+        if mount_path is not None:
+            self.settings.mount_path = mount_path
+
+        normalized_message_endpoint = self._normalize_path(  # type: ignore[attr-defined]
+            self.settings.mount_path, self.settings.message_path
+        )
+
+        sse_transport = SseServerTransport(normalized_message_endpoint)
+
+        async def handle_sse(scope, receive, send):
+            async with sse_transport.connect_sse(scope, receive, send) as streams:  # type: ignore[attr-defined]
+                await self._mcp_server.run(  # type: ignore[attr-defined]
+                    streams[0],
+                    streams[1],
+                    self._mcp_server.create_initialization_options(),  # type: ignore[attr-defined]
+                )
+            return Response()
+
+        async def handle_sse_post(request: Request) -> Response:
+            session_id_param = request.query_params.get("session_id")
+            if session_id_param is None:
+                return Response("session_id is required", status_code=400)
+
+            try:
+                from uuid import UUID
+
+                session_id = UUID(hex=session_id_param)
+            except ValueError:
+                return Response("Invalid session ID", status_code=400)
+
+            writer = sse_transport._read_stream_writers.get(session_id)  # type: ignore[attr-defined]
+            if not writer:
+                return Response("Could not find session", status_code=404)
+
+            body = await request.body()
+            try:
+                message = mcp_types.JSONRPCMessage.model_validate_json(body)  # type: ignore[attr-defined]
+            except ValidationError as err:
+                task = BackgroundTask(writer.send, err)
+                return Response("Could not parse message", status_code=400, background=task)
+
+            metadata = ServerMessageMetadata(request_context=request)
+            session_message = SessionMessage(message, metadata=metadata)
+            task = BackgroundTask(writer.send, session_message)
+            return Response("Accepted", status_code=202, background=task)
+
+        async def dispatch_endpoint(request: Request) -> Response:
+            if request.method.upper() == "POST":
+                return await handle_sse_post(request)
+            return await handle_sse(request.scope, request.receive, request._send)
+
+        routes: list[Route | Mount] = []
+        middleware: list[Middleware] = []
+        required_scopes: list[str] = []
+
+        if getattr(self, "_auth_server_provider", None):
+            try:
+                from mcp.server.auth.middleware.auth_context import AuthContextMiddleware  # type: ignore[import]
+                from mcp.server.auth.middleware.bearer_auth import (  # type: ignore[import]
+                    BearerAuthBackend,
+                    RequireAuthMiddleware,
+                )
+                from mcp.server.auth.routes import create_auth_routes  # type: ignore[import]
+            except ImportError as exc:  # pragma: no cover - optional runtime dependency
+                LOGGER.warning("Auth modules missing, skipping SSE alias patch: %s", exc)
+                return original_sse_app(self, mount_path=mount_path)
+
+            assert self.settings.auth  # type: ignore[attr-defined]
+            required_scopes = self.settings.auth.required_scopes or []  # type: ignore[attr-defined]
+
+            middleware = [
+                Middleware(
+                    AuthenticationMiddleware,
+                    backend=BearerAuthBackend(provider=self._auth_server_provider),  # type: ignore[attr-defined]
+                ),
+                Middleware(AuthContextMiddleware),
+            ]
+
+            routes.extend(
+                create_auth_routes(
+                    provider=self._auth_server_provider,  # type: ignore[attr-defined]
+                    issuer_url=self.settings.auth.issuer_url,  # type: ignore[attr-defined]
+                    service_documentation_url=self.settings.auth.service_documentation_url,  # type: ignore[attr-defined]
+                    client_registration_options=self.settings.auth.client_registration_options,  # type: ignore[attr-defined]
+                    revocation_options=self.settings.auth.revocation_options,  # type: ignore[attr-defined]
+                )
+            )
+
+            protected_endpoint = RequireAuthMiddleware(dispatch_endpoint, required_scopes)
+            routes.append(
+                Route(self.settings.sse_path, endpoint=protected_endpoint, methods=["GET", "POST"])
+            )
+            routes.append(
+                Mount(
+                    self.settings.message_path,
+                    app=RequireAuthMiddleware(sse_transport.handle_post_message, required_scopes),
+                )
+            )
+        else:
+            async def combined_endpoint(request: Request) -> Response:
+                return await dispatch_endpoint(request)
+
+            routes.append(
+                Route(self.settings.sse_path, endpoint=combined_endpoint, methods=["GET", "POST"])
+            )
+            routes.append(Mount(self.settings.message_path, app=sse_transport.handle_post_message))
+
+        routes.extend(getattr(self, "_custom_starlette_routes", []))
+
+        return Starlette(debug=self.settings.debug, routes=routes, middleware=middleware)  # type: ignore[name-defined]
+
+    FastMCP.sse_app = patched_sse_app  # type: ignore[assignment]
+    setattr(FastMCP, "_original_sse_app", original_sse_app)
+    _PATCH_SSE_ALIAS_APPLIED = True
+
+
+__all__ = [
+    "ensure_streamable_http_accept_patch",
+    "ensure_streamable_http_server_patch",
+    "ensure_sse_post_alias_patch",
+]

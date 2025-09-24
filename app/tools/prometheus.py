@@ -134,7 +134,7 @@ async def _query_prometheus(
     ctx: Context,
     datasource_uid: str,
     expr: str,
-    start: str,
+    start: Optional[str],
     end: Optional[str],
     step_seconds: Optional[int],
     query_type: Optional[str],
@@ -142,22 +142,25 @@ async def _query_prometheus(
     await _ensure_datasource(ctx, datasource_uid)
     client = PrometheusClient(ctx, datasource_uid)
     now = datetime.now(timezone.utc)
-    start_dt = _parse_time_expression(start, now)
     query = (query_type or "range").lower()
     if query == "range":
-        if not end:
-            raise ValueError("endTime must be provided for range queries")
-        if not step_seconds or step_seconds <= 0:
+        effective_start = start or "now-5m"
+        effective_end = end or "now"
+        effective_step = step_seconds if step_seconds is not None else 60
+        if effective_step <= 0:
             raise ValueError("stepSeconds must be greater than zero for range queries")
-        end_dt = _parse_time_expression(end, now)
+        start_dt = _parse_time_expression(effective_start, now)
+        end_dt = _parse_time_expression(effective_end, now)
         params = {
             "query": expr,
             "start": f"{start_dt.timestamp()}",
             "end": f"{end_dt.timestamp()}",
-            "step": str(step_seconds),
+            "step": str(effective_step),
         }
         payload = await client.request_json("/api/v1/query_range", params=params)
     else:
+        effective_start = start or "now"
+        start_dt = _parse_time_expression(effective_start, now)
         params = {
             "query": expr,
             "time": f"{start_dt.timestamp()}",
@@ -277,7 +280,7 @@ def register(app: FastMCP) -> None:
     async def query_prometheus(
         datasourceUid: str,
         expr: str,
-        startTime: str,
+        startTime: Optional[str] = None,
         endTime: Optional[str] = None,
         stepSeconds: Optional[int] = None,
         queryType: Optional[str] = None,
@@ -358,4 +361,3 @@ def register(app: FastMCP) -> None:
 
 
 __all__ = ["register"]
-

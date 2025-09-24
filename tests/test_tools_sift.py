@@ -21,6 +21,26 @@ def test_time_range_defaults_and_validation() -> None:
         sift._time_range(start=end, end=start)
 
 
+def test_parse_datetime_relative(monkeypatch: pytest.MonkeyPatch) -> None:
+    reference = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    monkeypatch.setattr(sift, "_now", lambda: reference)
+
+    assert sift._parse_datetime("now") == reference
+
+    result = sift._parse_datetime("now-1h30m")
+    assert isinstance(result, datetime)
+    assert result == reference - timedelta(hours=1, minutes=30)
+
+    future = sift._parse_datetime("now+30m")
+    assert future == reference + timedelta(minutes=30)
+
+    iso = sift._parse_datetime("2024-01-02T00:00:00Z")
+    assert iso == datetime(2024, 1, 2, tzinfo=timezone.utc)
+
+    with pytest.raises(ValueError):
+        sift._parse_datetime("now-")
+
+
 @pytest.fixture
 def ctx(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     config = SimpleNamespace(url="https://grafana.local")

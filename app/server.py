@@ -5,7 +5,11 @@ from __future__ import annotations
 from mcp.server import FastMCP
 
 from .instructions import load_instructions
-from .patches import ensure_streamable_http_accept_patch, ensure_streamable_http_server_patch
+from .patches import (
+    ensure_sse_post_alias_patch,
+    ensure_streamable_http_accept_patch,
+    ensure_streamable_http_server_patch,
+)
 from .tools import register_all
 
 
@@ -59,6 +63,7 @@ def create_app(
 
     ensure_streamable_http_accept_patch()
     ensure_streamable_http_server_patch()
+    ensure_sse_post_alias_patch()
 
     normalized_base_path = _normalize_mount_path(base_path)
     sse_path = _join_path(normalized_base_path, "sse")

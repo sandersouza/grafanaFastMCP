@@ -174,6 +174,21 @@ def test_update_dashboard_with_patches(monkeypatch: pytest.MonkeyPatch, sample_d
     assert captured["dashboard"]["title"] == "Updated"
     assert len(captured["dashboard"]["panels"]) == 3
     assert captured["folder"] == "folder"
+
+def test_apply_dashboard_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DASH_UID", "custom-uid")
+    monkeypatch.setenv("PROM_DS_UID", "prom-default")
+    monkeypatch.setenv("DASHBOARD_SCHEMA_VERSION", "40")
+    payload = {"panels": [{}, {"datasource": {}}]}
+    dashboard._apply_dashboard_defaults(payload)
+    assert payload["time"]["from"] == "now-1h"
+    assert payload["time"]["to"] == "now"
+    assert payload["schemaVersion"] == 40
+    assert payload["version"] == 1
+    assert payload["uid"] == "custom-uid"
+    assert payload["panels"][0]["datasource"]["uid"] == "prom-default"
+    assert payload["panels"][1]["datasource"]["uid"] == "prom-default"
+
 def test_update_dashboard_full(monkeypatch: pytest.MonkeyPatch, sample_dashboard: Dict[str, Any]) -> None:
     captured: Dict[str, Any] = {}
 
@@ -192,6 +207,7 @@ def test_update_dashboard_full(monkeypatch: pytest.MonkeyPatch, sample_dashboard
 
     monkeypatch.setattr(dashboard, "_post_dashboard", fake_post)
     ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace()))
+
     result = asyncio.run(
         dashboard._update_dashboard(
             ctx,
@@ -206,9 +222,35 @@ def test_update_dashboard_full(monkeypatch: pytest.MonkeyPatch, sample_dashboard
     )
     assert result == {"status": "ok"}
     assert captured["folder"] == "custom"
+    assert captured["overwrite"] is True
 
     with pytest.raises(ValueError):
         asyncio.run(dashboard._update_dashboard(ctx, None, None, None, None, None, False, None))
+
+
+def test_post_dashboard_conflict(monkeypatch: pytest.MonkeyPatch) -> None:
+    config = SimpleNamespace()
+    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace()))
+
+    class DummyClient:
+        async def post_json(self, path: str, json: Dict[str, Any], params=None, headers=None):
+            raise dashboard.GrafanaAPIError(412, '{"status":"name-exists"}')
+
+    monkeypatch.setattr(dashboard, "get_grafana_config", lambda _: config)
+    monkeypatch.setattr(dashboard, "GrafanaClient", lambda cfg: DummyClient())
+
+    with pytest.raises(ValueError) as excinfo:
+        asyncio.run(
+            dashboard._post_dashboard(
+                ctx,
+                {"title": "Existing", "panels": []},
+                folder_uid=None,
+                message=None,
+                overwrite=False,
+                user_id=None,
+            )
+        )
+    assert "overwrite" in str(excinfo.value)
 
 
 def test_get_panel_queries(sample_dashboard: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:

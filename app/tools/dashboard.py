@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import os
 import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
@@ -10,7 +11,7 @@ from typing import Any, Dict, List, Optional
 from mcp.server.fastmcp import Context, FastMCP
 
 from ..context import get_grafana_config
-from ..grafana_client import GrafanaClient
+from ..grafana_client import GrafanaAPIError, GrafanaClient
 
 
 _CACHE_KEY = "_dashboard_payload_cache"
@@ -70,7 +71,58 @@ async def _post_dashboard(
         payload["message"] = message
     if user_id is not None:
         payload["userId"] = user_id
-    return await client.post_json("/dashboards/db", json=payload)
+    try:
+        return await client.post_json("/dashboards/db", json=payload)
+    except GrafanaAPIError as exc:
+        if exc.status_code == 412 and "name-exists" in exc.message:
+            raise ValueError(
+                "Grafana recusou a criação porque já existe um dashboard com o mesmo título na pasta. "
+                "Defina overwrite=True para sobrescrever ou escolha outro nome."
+            ) from exc
+        raise
+
+
+def _schema_version_default() -> int:
+    raw = os.getenv("DASHBOARD_SCHEMA_VERSION")
+    if raw is None:
+        return 39
+    try:
+        return int(raw)
+    except ValueError:
+        return 39
+
+
+def _apply_dashboard_defaults(dashboard_obj: Dict[str, Any]) -> None:
+    time_defaults = dashboard_obj.setdefault("time", {})
+    time_defaults.setdefault("from", os.getenv("DASHBOARD_TIME_FROM", "now-1h"))
+    time_defaults.setdefault("to", os.getenv("DASHBOARD_TIME_TO", "now"))
+
+    if "schemaVersion" not in dashboard_obj:
+        dashboard_obj["schemaVersion"] = _schema_version_default()
+
+    version = dashboard_obj.get("version")
+    if isinstance(version, int):
+        dashboard_obj["version"] = version + 1
+    else:
+        dashboard_obj["version"] = 1
+
+    default_uid = os.getenv("DASH_UID")
+    if default_uid and not dashboard_obj.get("uid"):
+        dashboard_obj["uid"] = default_uid
+
+    prom_uid = os.getenv("PROM_DS_UID")
+    if prom_uid:
+        panels = dashboard_obj.get("panels")
+        if isinstance(panels, list):
+            for panel in panels:
+                if not isinstance(panel, dict):
+                    continue
+                datasource = panel.get("datasource")
+                if datasource is None:
+                    panel["datasource"] = {"uid": prom_uid}
+                elif isinstance(datasource, dict) and "uid" not in datasource:
+                    datasource["uid"] = prom_uid
+
 
 
 @dataclass
@@ -237,7 +289,12 @@ async def _update_dashboard_full(
     overwrite: bool,
     user_id: Optional[int],
 ) -> Any:
-    result = await _post_dashboard(ctx, dashboard, folder_uid, message, overwrite, user_id)
+    effective_overwrite = overwrite
+    if not effective_overwrite:
+        dash_id = dashboard.get("id")
+        if isinstance(dash_id, int) and dash_id > 0:
+            effective_overwrite = True
+    result = await _post_dashboard(ctx, dashboard, folder_uid, message, effective_overwrite, user_id)
     uid = dashboard.get("uid")
     if isinstance(uid, str) and uid:
         _cache_dashboard(ctx, uid, {"dashboard": dashboard})
@@ -502,15 +559,32 @@ def register(app: FastMCP) -> None:
         operations: Optional[List[Dict[str, Any]]] = None,
         folderUid: Optional[str] = None,
         message: Optional[str] = None,
-        overwrite: bool = False,
+        overwrite: bool = True,
         userId: Optional[int] = None,
         ctx: Optional[Context] = None,
     ) -> Any:
         if ctx is None:
             raise ValueError("Context injection failed for update_dashboard")
+
+        dashboard_payload = copy.deepcopy(dashboard) if dashboard is not None else None
+        if dashboard_payload is not None:
+            _apply_dashboard_defaults(dashboard_payload)
+
+        default_folder = os.getenv("FOLDER_UID")
+        if folderUid is None and default_folder:
+            folderUid = default_folder
+
+        if dashboard_payload is not None and uid is None:
+            potential_uid = dashboard_payload.get("uid")
+            if isinstance(potential_uid, str) and potential_uid:
+                uid = potential_uid
+        default_uid = os.getenv("DASH_UID")
+        if uid is None and default_uid:
+            uid = default_uid
+
         return await _update_dashboard(
             ctx,
-            dashboard,
+            dashboard_payload,
             uid,
             operations,
             folderUid,
