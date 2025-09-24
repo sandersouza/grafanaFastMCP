@@ -178,7 +178,7 @@ class FastMCP:
         """Register a tool function with metadata and inferred schema."""
 
         def decorator(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
-            schema = self._build_schema(func)
+            schema = self._normalize_schema(self._build_schema(func))
             tool_def = ToolDefinition(
                 name=name,
                 title=title,
@@ -244,6 +244,69 @@ class FastMCP:
         if required:
             schema["required"] = required
         return schema
+
+    def _normalize_schema(self, schema: Any) -> Dict[str, Any]:
+        """Ensure schemas used for tool parameters are always valid objects."""
+
+        def fallback_items_schema() -> Dict[str, Any]:
+            return {
+                "type": ["boolean", "integer", "number", "string", "object", "array", "null"],
+            }
+
+        def normalize(node: Any) -> Dict[str, Any]:
+            if not isinstance(node, dict):
+                return {"type": "object", "properties": {}}
+
+            normalized: Dict[str, Any] = dict(node)
+            schema_type = normalized.get("type")
+
+            if isinstance(schema_type, list):
+                if "array" in schema_type:
+                    items = normalized.get("items")
+                    if isinstance(items, list):
+                        normalized["items"] = [normalize(item) for item in items] or fallback_items_schema()
+                    elif isinstance(items, dict):
+                        normalized["items"] = normalize(items)
+                    else:
+                        normalized["items"] = fallback_items_schema()
+            elif schema_type == "array":
+                items = normalized.get("items")
+                if isinstance(items, list):
+                    normalized["items"] = [normalize(item) for item in items] or fallback_items_schema()
+                elif isinstance(items, dict):
+                    normalized["items"] = normalize(items)
+                else:
+                    normalized["items"] = fallback_items_schema()
+            elif schema_type == "object":
+                properties = normalized.get("properties")
+                if isinstance(properties, dict):
+                    normalized["properties"] = {key: normalize(value) for key, value in properties.items()}
+                else:
+                    normalized["properties"] = {}
+            else:
+                if not isinstance(schema_type, str):
+                    normalized["type"] = "object"
+                    normalized.setdefault("properties", {})
+
+            for key in ("anyOf", "oneOf", "allOf"):
+                options = normalized.get(key)
+                if isinstance(options, list):
+                    normalized[key] = [normalize(option) for option in options if isinstance(option, dict)]
+
+            required = normalized.get("required")
+            if required is not None:
+                if isinstance(required, list):
+                    filtered = [name for name in required if isinstance(name, str)]
+                    if filtered:
+                        normalized["required"] = filtered
+                    else:
+                        normalized.pop("required", None)
+                else:
+                    normalized.pop("required", None)
+
+            return normalized
+
+        return normalize(schema)
 
 
 __all__ = ["Context", "FastMCP", "ToolDefinition"]
