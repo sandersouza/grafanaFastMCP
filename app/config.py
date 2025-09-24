@@ -79,6 +79,13 @@ def _url_and_api_key_from_env() -> Tuple[str, str]:
                 "GRAFANA_API_KEY is deprecated, please use GRAFANA_SERVICE_ACCOUNT_TOKEN instead."
             )
             api_key = legacy_key
+    LOGGER.debug(
+        "Environment configuration read",
+        extra={
+            "url": url or DEFAULT_GRAFANA_URL,
+            "service_account_token": bool(api_key),
+        },
+    )
     return url, api_key
 
 
@@ -97,13 +104,24 @@ def grafana_config_from_env() -> GrafanaConfig:
     basic_auth = _basic_auth_from_env()
     access_token = os.getenv(GRAFANA_ACCESS_TOKEN_ENV, "").strip()
     id_token = os.getenv(GRAFANA_ID_TOKEN_ENV, "").strip()
-    return GrafanaConfig(
+    config = GrafanaConfig(
         url=url or DEFAULT_GRAFANA_URL,
         api_key=api_key,
         basic_auth=basic_auth,
         access_token=access_token,
         id_token=id_token,
     )
+    LOGGER.debug(
+        "Final GrafanaConfig from environment",
+        extra={
+            "url": config.url,
+            "api_key": bool(config.api_key),
+            "basic_auth": bool(config.basic_auth),
+            "access_token": bool(config.access_token),
+            "id_token": bool(config.id_token),
+        },
+    )
+    return config
 
 
 def _decode_basic_auth(value: str) -> Optional[Tuple[str, str]]:

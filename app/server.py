@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from mcp.server import FastMCP
 
+from .instructions import load_instructions
 from .patches import ensure_streamable_http_accept_patch, ensure_streamable_http_server_patch
 from .tools import register_all
 
@@ -45,23 +46,6 @@ def _normalize_streamable_http_path(path: str, mount_path: str, default_segment:
         resolved = resolved.rstrip("/")
     return resolved or "/"
 
-INSTRUCTIONS = """
-This server provides access to your Grafana instance and the surrounding ecosystem.
-
-Available Capabilities:
-- Dashboards: Search, retrieve, update, and create dashboards. Extract panel queries and datasource information.
-- Datasources: List and fetch details for datasources.
-- Prometheus & Loki: Run PromQL and LogQL queries, retrieve metric/log metadata, and explore label names/values.
-- Incidents: Search, create, update, and resolve incidents in Grafana Incident.
-- Sift Investigations: Start and manage Sift investigations, analyze logs/traces, find error patterns, and detect slow requests.
-- Alerting: List and fetch alert rules and notification contact points.
-- OnCall: View and manage on-call schedules, shifts, teams, and users.
-- Admin: List teams and perform administrative tasks.
-- Pyroscope: Profile applications and fetch profiling data.
-- Navigation: Generate deeplink URLs for Grafana resources like dashboards, panels, and Explore queries.
-"""
-
-
 def create_app(
     *,
     host: str,
@@ -87,9 +71,11 @@ def create_app(
         default_segment="mcp",
     )
 
+    instructions = load_instructions()
+
     app = FastMCP(
         name="mcp-grafana",
-        instructions=INSTRUCTIONS,
+        instructions=instructions,
         host=host,
         port=port,
         mount_path="/",

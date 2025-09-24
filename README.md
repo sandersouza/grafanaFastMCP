@@ -24,7 +24,8 @@ Todo o código-fonte fica no diretório `app/`, deixando a raiz do repositório 
 ├── tests/                     # Testes automatizados em Python
 ├── Dockerfile                 # Imagem Docker/Podman
 ├── Makefile                   # Atalhos de automação (venv, package, docker...)
-├── env.example                # Exemplo de variáveis de ambiente
+├── env.example                # Exemplo de variáveis de ambiente (nomes oficiais)
+├── instructions.md            # Prompt padrão utilizado pelos clientes MCP
 ├── requirements.txt           # Dependências de runtime
 └── pytest.ini                 # Configuração do pytest
 ```
@@ -57,6 +58,9 @@ python -m app --address localhost:8000 --log-level INFO
 
 Por padrão, o transporte STDIO é utilizado. Para executar em modos HTTP, informe `--transport sse` ou `--transport streamable-http` conforme necessário.
 
+Se existir um arquivo `.env` na raiz do projeto, ele será carregado automaticamente durante a inicialização. Para utilizar um arquivo diferente, passe `--env-file caminho/para/arquivo`.
+Além disso, variáveis de ambiente como `APP_ADDRESS`, `BASE_PATH`, `STREAMABLE_HTTP_PATH`, `LOG_LEVEL` e `TRANSPORT` são usadas como valores padrão para os respectivos parâmetros CLI quando definidos. Para alterar o prompt inicial fornecido aos clientes MCP, edite `instructions.md` ou defina `MCP_INSTRUCTIONS_PATH` apontando para outro arquivo de texto/Markdown.
+
 Parâmetros úteis:
 - `--address`: endereço e porta nos quais o servidor será publicado.
 - `--base-path`: caminho base para expor o transporte HTTP (padrão `/`).
@@ -65,6 +69,7 @@ Parâmetros úteis:
 - `--log-level`: nível de log (`DEBUG`, `INFO`, `WARNING`, etc.).
 - `--debug`: ativa modo de depuração do FastMCP.
 - `--version`: imprime a versão da aplicação e encerra.
+- `--env-file`: caminho para um arquivo `.env` adicional a ser carregado antes da inicialização.
 
 O servidor registra automaticamente todas as ferramentas MCP descritas em `app/tools/` através da função `register_all`. Agentes MCP podem consumir as capacidades para listar datasources, atualizar dashboards, executar consultas no Loki e gerar links de navegação no Grafana, entre outras.
 

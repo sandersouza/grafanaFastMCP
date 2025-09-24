@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import logging
 
 from starlette.requests import Request
 
@@ -12,6 +13,8 @@ from mcp.server.streamable_http import (
     StreamableHTTPServerTransport,
 )
 from mcp.server.fastmcp import FastMCP
+
+LOGGER = logging.getLogger(__name__)
 
 _PATCH_ACCEPT_APPLIED = False
 _PATCH_STREAMABLE_SERVER_APPLIED = False
@@ -110,6 +113,13 @@ def ensure_streamable_http_server_patch() -> None:
                 "MCP_STREAMABLE_HTTP_TIMEOUT_GRACEFUL_SHUTDOWN",
                 str(max(notify_timeout, 120.0)),
             )
+        )
+
+        LOGGER.info(
+            "Streamable HTTP timeouts configured (keep_alive=%ss, notify=%ss, graceful_shutdown=%ss)",
+            keep_alive_timeout,
+            notify_timeout,
+            graceful_timeout,
         )
 
         config = uvicorn.Config(

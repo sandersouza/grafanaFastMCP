@@ -5,7 +5,10 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+from pathlib import Path
 from typing import Tuple
+
+from dotenv import find_dotenv, load_dotenv
 
 from . import __version__
 from .config import (
@@ -33,6 +36,7 @@ def _parse_address(value: str) -> Tuple[str, int]:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Run the Grafana FastMCP server.")
+    parser.add_argument("--env-file", dest="env_file", default=None, help="Path to a .env file to load before starting")
     parser.add_argument("--address", default="localhost:8000", help="Host and port to bind the server")
     parser.add_argument("--base-path", default="/", help="Base path when using the SSE or Streamable HTTP transports")
     parser.add_argument("--log-level", default="INFO", help="Log level (DEBUG, INFO, WARN, ERROR)")
@@ -67,6 +71,53 @@ def main(argv: list[str] | None = None) -> None:
             help=f"{description}. Overrides the {env_name} environment variable when provided.",
         )
 
+    # First pass to resolve env-file parameter without consuming CLI overrides
+    pre_args, _ = parser.parse_known_args(argv)
+
+    project_root = Path(__file__).resolve().parent.parent
+    default_env = project_root / ".env"
+
+    def _resolve_candidate(value: str | Path | None) -> Path | None:
+        if not value:
+            return None
+        return Path(value).expanduser().resolve()
+
+    selected_env: Path | None = None
+
+    if default_env.exists():
+        selected_env = default_env.resolve()
+    else:
+        fallback_candidates: list[Path | None] = [
+            _resolve_candidate(pre_args.env_file),
+            _resolve_candidate(os.getenv("ENV_FILE")),
+            _resolve_candidate(Path.cwd() / ".env"),
+        ]
+
+        discovered = find_dotenv(usecwd=True)
+        if discovered:
+            fallback_candidates.append(_resolve_candidate(discovered))
+        discovered_relative = find_dotenv(usecwd=False)
+        if discovered_relative:
+            fallback_candidates.append(_resolve_candidate(discovered_relative))
+
+        for candidate in fallback_candidates:
+            if candidate and candidate.exists():
+                selected_env = candidate
+                break
+
+    if selected_env:
+        # CLI arguments will override these values later; shell exports only apply when .env is missing.
+        load_dotenv(selected_env, override=True)
+
+    env_defaults = {
+        "address": os.getenv("APP_ADDRESS"),
+        "base_path": os.getenv("BASE_PATH"),
+        "log_level": os.getenv("LOG_LEVEL"),
+        "transport": os.getenv("TRANSPORT"),
+        "streamable_http_path": os.getenv("STREAMABLE_HTTP_PATH"),
+    }
+    parser.set_defaults(**{key: value for key, value in env_defaults.items() if value })
+
     args = parser.parse_args(argv)
 
     if args.version:
@@ -83,16 +134,16 @@ def main(argv: list[str] | None = None) -> None:
     log_level_value = getattr(logging, log_level_name, logging.INFO)
     logging.basicConfig(level=log_level_value, format="%(levelname)s %(name)s: %(message)s")
 
-    if not args.debug and log_level_value >= logging.INFO:
-        noisy_loggers = [
-            "mcp.server",
-            "uvicorn",
-            "uvicorn.error",
-            "uvicorn.access",
-            "httpx",
-        ]
-        for logger_name in noisy_loggers:
-            logging.getLogger(logger_name).setLevel(logging.WARNING)
+    noisy_loggers = [
+        "mcp.server",
+        "uvicorn",
+        "uvicorn.error",
+        "uvicorn.access",
+        "httpx",
+    ]
+    target_level = logging.WARNING if (not args.debug and log_level_value >= logging.INFO) else log_level_value
+    for logger_name in noisy_loggers:
+        logging.getLogger(logger_name).setLevel(target_level)
 
     base_path = args.base_path or "/"
     transport = args.transport

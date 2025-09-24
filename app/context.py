@@ -40,6 +40,9 @@ def _build_config(ctx: Context) -> GrafanaConfig:
 
     headers = _request_headers(request)
     config = grafana_config_from_headers(headers)
+    if not config.api_key:
+        LOGGER.warning("Grafana API key missing after header merge; defaulting to environment settings")
+        config = grafana_config_from_env()
     LOGGER.debug(
         "Resolved Grafana configuration",
         extra={
