@@ -13,13 +13,41 @@ from ..context import get_grafana_config
 from ..grafana_client import GrafanaClient
 
 
-async def _get_dashboard(ctx: Context, uid: str) -> Dict[str, Any]:
+_CACHE_KEY = "_dashboard_payload_cache"
+
+
+def _dashboard_cache(ctx: Context) -> Dict[str, Any]:
+    session = ctx.request_context.session
+    cache = getattr(session, _CACHE_KEY, None)
+    if cache is None:
+        cache = {}
+        setattr(session, _CACHE_KEY, cache)
+    return cache
+
+
+def _cache_dashboard(ctx: Context, uid: str, payload: Dict[str, Any]) -> None:
+    cache = _dashboard_cache(ctx)
+    cache[uid] = copy.deepcopy(payload)
+
+
+def _cached_dashboard(ctx: Context, uid: str) -> Optional[Dict[str, Any]]:
+    cache = _dashboard_cache(ctx)
+    payload = cache.get(uid)
+    return copy.deepcopy(payload) if isinstance(payload, dict) else None
+
+
+async def _get_dashboard(ctx: Context, uid: str, *, use_cache: bool = True) -> Dict[str, Any]:
     config = get_grafana_config(ctx)
     client = GrafanaClient(config)
+    if use_cache:
+        cached = _cached_dashboard(ctx, uid)
+        if cached is not None:
+            return cached
     dashboard = await client.get_json(f"/dashboards/uid/{uid}")
     if not isinstance(dashboard, dict):
         raise ValueError("Unexpected Grafana response when fetching dashboard")
-    return dashboard
+    _cache_dashboard(ctx, uid, dashboard)
+    return copy.deepcopy(dashboard)
 
 
 async def _post_dashboard(
@@ -189,7 +217,7 @@ async def _update_dashboard_with_patches(
         if isinstance(meta_folder, str):
             effective_folder = meta_folder
 
-    return await _post_dashboard(
+    result = await _post_dashboard(
         ctx,
         working_copy,
         effective_folder,
@@ -197,6 +225,8 @@ async def _update_dashboard_with_patches(
         overwrite=True,
         user_id=user_id,
     )
+    _cache_dashboard(ctx, uid, {"dashboard": working_copy, "meta": source.get("meta")})
+    return result
 
 
 async def _update_dashboard_full(
@@ -207,7 +237,11 @@ async def _update_dashboard_full(
     overwrite: bool,
     user_id: Optional[int],
 ) -> Any:
-    return await _post_dashboard(ctx, dashboard, folder_uid, message, overwrite, user_id)
+    result = await _post_dashboard(ctx, dashboard, folder_uid, message, overwrite, user_id)
+    uid = dashboard.get("uid")
+    if isinstance(uid, str) and uid:
+        _cache_dashboard(ctx, uid, {"dashboard": dashboard})
+    return result
 
 
 async def _update_dashboard(
@@ -241,8 +275,8 @@ async def _update_dashboard(
     raise ValueError("Either dashboard JSON or (uid + operations) must be provided")
 
 
-async def _get_panel_queries(ctx: Context, uid: str) -> List[Dict[str, Any]]:
-    payload = await _get_dashboard(ctx, uid)
+async def _get_panel_queries(ctx: Context, uid: str, *, use_cache: bool = True) -> List[Dict[str, Any]]:
+    payload = await _get_dashboard(ctx, uid, use_cache=use_cache)
     dashboard_obj = payload.get("dashboard")
     if not isinstance(dashboard_obj, dict):
         raise ValueError("Dashboard payload does not contain a JSON object")
@@ -447,11 +481,12 @@ def register(app: FastMCP) -> None:
     )
     async def get_dashboard_by_uid(
         uid: str,
+        forceRefresh: bool = False,
         ctx: Optional[Context] = None,
     ) -> Any:
         if ctx is None:
             raise ValueError("Context injection failed for get_dashboard_by_uid")
-        return await _get_dashboard(ctx, uid)
+        return await _get_dashboard(ctx, uid, use_cache=not forceRefresh)
 
     @app.tool(
         name="update_dashboard",
@@ -494,11 +529,12 @@ def register(app: FastMCP) -> None:
     )
     async def get_dashboard_panel_queries(
         uid: str,
+        forceRefresh: bool = False,
         ctx: Optional[Context] = None,
     ) -> List[Dict[str, Any]]:
         if ctx is None:
             raise ValueError("Context injection failed for get_dashboard_panel_queries")
-        return await _get_panel_queries(ctx, uid)
+        return await _get_panel_queries(ctx, uid, use_cache=not forceRefresh)
 
     @app.tool(
         name="get_dashboard_property",
@@ -508,11 +544,12 @@ def register(app: FastMCP) -> None:
     async def get_dashboard_property(
         uid: str,
         jsonPath: str,
+        forceRefresh: bool = False,
         ctx: Optional[Context] = None,
     ) -> Any:
         if ctx is None:
             raise ValueError("Context injection failed for get_dashboard_property")
-        dashboard = await _get_dashboard(ctx, uid)
+        dashboard = await _get_dashboard(ctx, uid, use_cache=not forceRefresh)
         data = dashboard.get("dashboard")
         if not isinstance(data, dict):
             raise ValueError("Dashboard payload does not contain a JSON object")
@@ -525,11 +562,12 @@ def register(app: FastMCP) -> None:
     )
     async def get_dashboard_summary(
         uid: str,
+        forceRefresh: bool = False,
         ctx: Optional[Context] = None,
     ) -> Dict[str, Any]:
         if ctx is None:
             raise ValueError("Context injection failed for get_dashboard_summary")
-        dashboard = await _get_dashboard(ctx, uid)
+        dashboard = await _get_dashboard(ctx, uid, use_cache=not forceRefresh)
         data = dashboard.get("dashboard")
         if not isinstance(data, dict):
             raise ValueError("Dashboard payload does not contain a JSON object")

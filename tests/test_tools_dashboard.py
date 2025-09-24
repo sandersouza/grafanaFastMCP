@@ -99,8 +99,10 @@ class DummyDashboardClient:
     def __init__(self, payload: Dict[str, Any]) -> None:
         self.payload = deepcopy(payload)
         self.post_calls: list[tuple[str, Dict[str, Any], Dict[str, Any]]] = []
+        self.get_calls: List[str] = []
 
     async def get_json(self, path: str) -> Dict[str, Any]:
+        self.get_calls.append(path)
         return deepcopy(self.payload)
 
     async def post_json(
@@ -120,7 +122,7 @@ def dashboard_tools(monkeypatch: pytest.MonkeyPatch, sample_dashboard: Dict[str,
     config = SimpleNamespace()
     monkeypatch.setattr(dashboard, "get_grafana_config", lambda _: config)
     monkeypatch.setattr(dashboard, "GrafanaClient", lambda cfg: client)
-    ctx = SimpleNamespace()
+    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace()))
     app = FastMCP()
     dashboard.register(app)
     tool_map = {tool.name: tool for tool in asyncio.run(app.list_tools())}
@@ -130,7 +132,7 @@ def dashboard_tools(monkeypatch: pytest.MonkeyPatch, sample_dashboard: Dict[str,
 def test_update_dashboard_with_patches(monkeypatch: pytest.MonkeyPatch, sample_dashboard: Dict[str, Any]) -> None:
     captured: Dict[str, Any] = {}
 
-    async def fake_get(ctx: Any, uid: str) -> Dict[str, Any]:
+    async def fake_get(ctx: Any, uid: str, *, use_cache: bool = True) -> Dict[str, Any]:
         return deepcopy(sample_dashboard)
 
     async def fake_post(
@@ -151,7 +153,7 @@ def test_update_dashboard_with_patches(monkeypatch: pytest.MonkeyPatch, sample_d
     monkeypatch.setattr(dashboard, "_get_dashboard", fake_get)
     monkeypatch.setattr(dashboard, "_post_dashboard", fake_post)
 
-    ctx = SimpleNamespace()
+    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace()))
     operations = [
         {"op": "replace", "path": "title", "value": "Updated"},
         {"op": "add", "path": "panels/-", "value": {"id": 3}},
@@ -189,7 +191,7 @@ def test_update_dashboard_full(monkeypatch: pytest.MonkeyPatch, sample_dashboard
         return {"status": "ok"}
 
     monkeypatch.setattr(dashboard, "_post_dashboard", fake_post)
-    ctx = SimpleNamespace()
+    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace()))
     result = asyncio.run(
         dashboard._update_dashboard(
             ctx,
@@ -210,11 +212,11 @@ def test_update_dashboard_full(monkeypatch: pytest.MonkeyPatch, sample_dashboard
 
 
 def test_get_panel_queries(sample_dashboard: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
-    async def fake_get(ctx: Any, uid: str) -> Dict[str, Any]:
+    async def fake_get(ctx: Any, uid: str, *, use_cache: bool = True) -> Dict[str, Any]:
         return sample_dashboard
 
     monkeypatch.setattr(dashboard, "_get_dashboard", fake_get)
-    ctx = SimpleNamespace()
+    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace()))
     queries = asyncio.run(dashboard._get_panel_queries(ctx, "uid123"))
     assert queries[0]["datasource"]["uid"] == "ds1"
 
@@ -265,3 +267,14 @@ def test_dashboard_tool_functions_execute(dashboard_tools: tuple[Dict[str, Any],
         )
     )
     assert client.post_calls
+
+
+def test_dashboard_cache_reuse(dashboard_tools: tuple[Dict[str, Any], DummyDashboardClient, SimpleNamespace]) -> None:
+    tools, client, ctx = dashboard_tools
+    asyncio.run(tools["get_dashboard_by_uid"].function(uid="abc", ctx=ctx))
+    initial_fetches = len(client.get_calls)
+    asyncio.run(tools["get_dashboard_summary"].function(uid="abc", ctx=ctx))
+    assert len(client.get_calls) == initial_fetches
+
+    asyncio.run(tools["get_dashboard_by_uid"].function(uid="abc", forceRefresh=True, ctx=ctx))
+    assert len(client.get_calls) == initial_fetches + 1

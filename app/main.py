@@ -171,6 +171,5 @@ def main(argv: list[str] | None = None) -> None:
     mount_path = app.settings.mount_path if transport == "sse" else None
     app.run(transport, mount_path=mount_path)
 
-
 if __name__ == "__main__":  # pragma: no cover - manual execution
     main()
