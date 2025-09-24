@@ -37,7 +37,7 @@ def _build_api_base_url(url: str) -> str:
     return urlunparse(rebuilt)
 
 
-@dataclass(slots=True)
+@dataclass
 class GrafanaClient:
     config: GrafanaConfig
     _base_url: str = field(init=False, repr=False)

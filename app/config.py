@@ -27,7 +27,7 @@ GRAFANA_ACCESS_TOKEN_HEADER = "x-access-token"
 AUTHORIZATION_HEADER = "authorization"
 
 
-@dataclass(slots=True)
+@dataclass
 class TLSConfig:
     """Subset of TLS configuration supported by the Go implementation."""
 
@@ -49,7 +49,7 @@ class TLSConfig:
         return None
 
 
-@dataclass(slots=True)
+@dataclass
 class GrafanaConfig:
     """Represents per-request Grafana configuration."""
 
