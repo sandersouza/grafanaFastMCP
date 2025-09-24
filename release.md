@@ -19,6 +19,7 @@
 - Documentação do prompt cobre boas práticas para todas as tools (dashboards, Prometheus/Loki, incidents, etc.), reduzindo respostas verbosas e acelerando o fluxo com os agentes MCP.
 - Incluso mecânismo de cache na tool dashboard, reduzindo a quantidade de dados com duplicidade de stream.
 - Criação do Method: Initialize para atender os requisitos de compliance da OpenAI, para implementação de mecânismos de fall-back em sessões.
+- Adequação das repostas das tools, ao padrão do VSCode / Co-Pilot, para poder ser adicionada como MCP Server em ambos.
 
 ### Melhorias principais
 - Resolução de arquivos `.env` aceita caminhos de `--env-file`, `ENV_FILE`, diretório atual e varredura via `find_dotenv`, mantendo compatibilidade retroativa como fallback.
@@ -29,6 +30,7 @@
 - Melhorias na velocidade da tool dashboard, prometheus e loki por meio de mecânismos de cache de contexto (`ctx.request_context.session`).
 - Definido default `start=now-5m`, `end=now`, and `step=60` na tool query_prometheus evitando a obrigatoriedade de definir janela temporal.
 - A tool sift `find_error_pattern_logs` agora aceita expressões relativas, como `now-1h`, e não somente formato ISO.
+- As tools agora, são listadas na inicialização somente se a instância do Grafana, à qual está ligado, tiver a capability necessária.
 
 ### Itens adicionais
 - `Makefile` volta a empacotar somente `run_app.py`, já que `instructions.md` fica editável na raiz.
