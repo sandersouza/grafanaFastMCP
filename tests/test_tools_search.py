@@ -87,6 +87,22 @@ def test_fetch_schema_exposes_string_identifiers() -> None:
     assert id_schema.get("type") == "string"
 
 
+def test_fetch_schema_defines_array_items_for_ids() -> None:
+    app = FastMCP()
+    register_all(app)
+
+    tools = asyncio.run(app.list_tools())
+    tool = next((tool for tool in tools if tool.name == "fetch"), None)
+    assert tool is not None
+
+    schema = tool.inputSchema
+    ids_schema = schema.get("properties", {}).get("ids")
+    assert ids_schema is not None, schema
+    assert ids_schema.get("type") == "array"
+    assert "items" in ids_schema
+    assert isinstance(ids_schema["items"], dict)
+
+
 def test_parse_dashboard_url_handles_relative_and_absolute_paths() -> None:
     uid, numeric = _parse_dashboard_url("/d/abc123/example")
     assert uid == "abc123"
