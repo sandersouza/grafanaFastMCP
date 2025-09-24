@@ -57,6 +57,30 @@ def test_stdio_list_tools_returns_registered_tool() -> None:
     assert len(tools) == 1
     assert tools[0]["name"] == "echo"
     assert tools[0]["inputSchema"]["type"] == "object"
+    assert tools[0]["parameters"]["type"] == "object"
+    assert tools[0]["parameters"] == tools[0]["inputSchema"]
+
+
+def test_stdio_list_tools_includes_empty_parameters_for_no_argument_tool() -> None:
+    app = FastMCP(name="mcp-grafana", instructions=None)
+
+    @app.tool(name="noop", title="Noop", description="No arguments")
+    async def noop() -> Dict[str, str]:
+        return {"result": "ok"}
+
+    handler = _STDIOHandler(app)
+    _initialize(handler)
+
+    response = handler._handle_request({
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/list",
+        "params": {},
+    })
+
+    tool = response["result"]["tools"][0]
+    assert tool["parameters"]["type"] == "object"
+    assert tool["parameters"].get("properties") == {}
 
 
 def test_stdio_call_tool_invokes_async_function() -> None:

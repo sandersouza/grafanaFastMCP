@@ -27,6 +27,7 @@ class ToolDefinition:
     title: str
     description: str
     inputSchema: Dict[str, Any]
+    parameters: Dict[str, Any]
     function: Callable[..., Awaitable[Any]]
     signature: inspect.Signature = field(repr=False)
 
@@ -140,6 +141,7 @@ class FastMCP:
                 title=title,
                 description=description,
                 inputSchema=schema,
+                parameters=schema,
                 function=func,
                 signature=inspect.signature(func),
             )
@@ -336,6 +338,7 @@ class _STDIOHandler:
                 "title": tool.title,
                 "description": tool.description,
                 "inputSchema": tool.inputSchema,
+                "parameters": tool.parameters,
             }
             annotations = {}
             if tool.title:
