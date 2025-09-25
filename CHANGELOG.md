@@ -1,11 +1,7 @@
 # Changelog
+Todas as mudanças notáveis deste projeto são registradas neste arquivo. Este formato segue as recomendações do "Keep a Changelog" e o projeto adota versionamento semântico (semver).
 
-Todas as mudanças notáveis deste projeto são registradas neste arquivo.
-
-Este formato segue as recomendações do "Keep a Changelog" e o projeto adota versionamento semântico (SemVer).
-
-## [1.0.1] – 2025-09-24
-
+## [v1.0.1] – 2025-09-24
 ### Adicionado
 - Prompt inicial carregado de `instructions.md` (ou via `MCP_INSTRUCTIONS_PATH`), permitindo ajustes rápidos sem rebuild e mantendo fallback empacotado.
 - Método `initialize` implementado para compliance com OpenAI MCP, suportando mecanismos de fallback de sessão.
@@ -33,8 +29,31 @@ Este formato segue as recomendações do "Keep a Changelog" e o projeto adota ve
 - `env.example` lista todas as variáveis suportadas (incluindo timeouts e `MCP_INSTRUCTIONS_PATH`).
 - `Makefile` volta a empacotar apenas `run_app.py`, mantendo `instructions.md` editável na raiz.
 
-## [1.0.0] – 2025-02-08
+### Commits
+- [[`c5556de`](https://github.com/sandersouza/grafanaFastMCP/commit/c5556de)] Release v101-pre (see release.md)
+- [[`91a3adf`](https://github.com/sandersouza/grafanaFastMCP/commit/91a3adf)] test:cover core server entrypoints
+- [[`690d715`](https://github.com/sandersouza/grafanaFastMCP/commit/690d715)] Increasetests to near 90%
+- [[`ad9d115`](https://github.com/sandersouza/grafanaFastMCP/commit/ad9d115)] Cachesupport add @dashboard
+- [[`6521518`](https://github.com/sandersouza/grafanaFastMCP/commit/6521518)] Load realmcp package when available
+- [[`e136882`](https://github.com/sandersouza/grafanaFastMCP/commit/e136882)] Oh boy! tomany fixes!!!
+- [[`ca6590f`](https://github.com/sandersouza/grafanaFastMCP/commit/ca6590f)] feat:enforce streamable instructions and templating
+- [[`b084c42`](https://github.com/sandersouza/grafanaFastMCP/commit/b084c42)] fixupdate_dashboard and reduce instructions.md to 1500 chars max
+- [[`aa1cd50`](https://github.com/sandersouza/grafanaFastMCP/commit/aa1cd50)] so manyfix :S
+- [[`7cf377f`](https://github.com/sandersouza/grafanaFastMCP/commit/7cf377f)] Handlemissing request in context config
+- [[`546c01f`](https://github.com/sandersouza/grafanaFastMCP/commit/546c01f)] Filter MCPtools based on Grafana capabilities
+- [[`b6b1a5e`](https://github.com/sandersouza/grafanaFastMCP/commit/b6b1a5e)] Ensuretool parameters include object schema
+- [[`fb8c820`](https://github.com/sandersouza/grafanaFastMCP/commit/fb8c820)] Updaterealease.md
+- [[`2bbe5d5`](https://github.com/sandersouza/grafanaFastMCP/commit/2bbe5d5)] FixFastMCP array schema items
+- [[`2529709`](https://github.com/sandersouza/grafanaFastMCP/commit/2529709)] Ensurefetch ids schema defines item types
+- [[`f37c8a9`](https://github.com/sandersouza/grafanaFastMCP/commit/f37c8a9)] Normalizetool parameter schemas
+- [[`77c551e`](https://github.com/sandersouza/grafanaFastMCP/commit/77c551e)] Recursively normalize array schemas for tools
+- [[`a68e584`](https://github.com/sandersouza/grafanaFastMCP/commit/a68e584)] Revert"Normalize tool parameter schemas"
+- [[`d58bf7a`](https://github.com/sandersouza/grafanaFastMCP/commit/d58bf7a)] ddcomprehensive guidance for resource updates, dashboards, and Prom…
+- [[`88a3c8c`](https://github.com/sandersouza/grafanaFastMCP/commit/88a3c8c)] A Improvedashboard tool schema and graceful shutdown
+- [[`b583a96`](https://github.com/sandersouza/grafanaFastMCP/commit/b583a96)] Refinefallback schema by excluding "array" type to prevent nested ar…
+- [[`b85c39b`](https://github.com/sandersouza/grafanaFastMCP/commit/b85c39b)] Updatedocumentation and tests: replace release notes with changelog,… 
 
+## [v1.0.0] – 2025-02-08
 ### Adicionado
 - Primeira versão estável do servidor/CLI Grafana FastMCP compatível com o conector MCP da OpenAI; transporte STDIO como padrão e suporte completo a SSE e Streamable HTTP.
 - Ferramentas MCP para Grafana (dashboards, datasources, alerting, incident, OnCall, Prometheus, Loki, Pyroscope, Sift, navigation, admin), com schemas validados e aderentes ao protocolo.
