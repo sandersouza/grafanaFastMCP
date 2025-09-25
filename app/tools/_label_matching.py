@@ -16,7 +16,7 @@ _MATCH_TYPE_ALIASES: Dict[str, str] = {
 }
 
 
-@dataclass(slots=True)
+@dataclass
 class LabelMatcher:
     """Represents a single matcher against a label key."""
 
@@ -50,7 +50,7 @@ class LabelMatcher:
         return is_match if match_type == "=~" else not is_match
 
 
-@dataclass(slots=True)
+@dataclass
 class Selector:
     """Collection of matchers that must all evaluate to true."""
 
@@ -86,4 +86,3 @@ def matches_all(selectors: Iterable[Selector], labels: Mapping[str, str]) -> boo
 
 
 __all__ = ["LabelMatcher", "Selector", "matches_all"]
-

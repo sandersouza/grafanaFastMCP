@@ -2,10 +2,23 @@
 
 from __future__ import annotations
 
+import logging
+from typing import Any
+
 from mcp.server import FastMCP
 
-from .patches import ensure_streamable_http_accept_patch, ensure_streamable_http_server_patch
+from .instructions import load_instructions
+from .patches import (
+    ensure_sse_post_alias_patch,
+    ensure_sse_server_patch,
+    ensure_streamable_http_accept_patch,
+    ensure_streamable_http_instructions_patch,
+    ensure_streamable_http_server_patch,
+    set_streamable_http_instructions,
+)
 from .tools import register_all
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _normalize_mount_path(base_path: str) -> str:
@@ -45,22 +58,65 @@ def _normalize_streamable_http_path(path: str, mount_path: str, default_segment:
         resolved = resolved.rstrip("/")
     return resolved or "/"
 
-INSTRUCTIONS = """
-This server provides access to your Grafana instance and the surrounding ecosystem.
 
-Available Capabilities:
-- Dashboards: Search, retrieve, update, and create dashboards. Extract panel queries and datasource information.
-- Datasources: List and fetch details for datasources.
-- Prometheus & Loki: Run PromQL and LogQL queries, retrieve metric/log metadata, and explore label names/values.
-- Incidents: Search, create, update, and resolve incidents in Grafana Incident.
-- Sift Investigations: Start and manage Sift investigations, analyze logs/traces, find error patterns, and detect slow requests.
-- Alerting: List and fetch alert rules and notification contact points.
-- OnCall: View and manage on-call schedules, shifts, teams, and users.
-- Admin: List teams and perform administrative tasks.
-- Pyroscope: Profile applications and fetch profiling data.
-- Navigation: Generate deeplink URLs for Grafana resources like dashboards, panels, and Explore queries.
-"""
+def _register_streamable_http_alias(app: FastMCP) -> None:
+    """Expose ``/{prefix}/link_{id}/…`` as an alias for the Streamable HTTP endpoint."""
 
+    routes: Any = getattr(app, "_custom_starlette_routes", None)
+    if not isinstance(routes, list):
+        return
+
+    alias_name = "streamable-http-link-alias"
+    if any(getattr(route, "name", None) == alias_name for route in routes):
+        return
+
+    try:
+        from starlette.responses import PlainTextResponse
+        from starlette.routing import Route
+    except Exception:  # pragma: no cover - optional runtime dependency
+        LOGGER.debug("Streamable HTTP alias disabled: Starlette not available", exc_info=True)
+        return
+
+    try:
+        from mcp.server.fastmcp.server import StreamableHTTPASGIApp
+    except Exception:  # pragma: no cover - optional runtime dependency
+        LOGGER.debug("Streamable HTTP alias disabled: FastMCP server module unavailable", exc_info=True)
+        return
+
+    class _StreamableHTTPLinkAlias:
+        def __init__(self, fastmcp_app: FastMCP) -> None:
+            self._fastmcp = fastmcp_app
+
+        async def __call__(self, scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+            fastmcp_app = self._fastmcp
+            if getattr(fastmcp_app, "_session_manager", None) is None:
+                fastmcp_app.streamable_http_app()
+
+            session_manager = getattr(fastmcp_app, "_session_manager", None)
+            if session_manager is None:
+                response = PlainTextResponse(
+                    "Streamable HTTP session manager unavailable",
+                    status_code=503,
+                )
+                await response(scope, receive, send)
+                return
+
+            alias_scope = dict(scope)
+            alias_scope["path"] = fastmcp_app.settings.streamable_http_path
+            alias_scope.setdefault("root_path", "")
+
+            alias_app = StreamableHTTPASGIApp(session_manager)
+            await alias_app(alias_scope, receive, send)
+
+    routes.append(
+        Route(
+            "/{prefix}/link_{link_id}/{rest:path}",
+            endpoint=_StreamableHTTPLinkAlias(app),
+            methods=["GET", "POST", "DELETE"],
+            name=alias_name,
+            include_in_schema=False,
+        )
+    )
 
 def create_app(
     *,
@@ -73,8 +129,14 @@ def create_app(
 ) -> FastMCP:
     """Create and configure the FastMCP application."""
 
+    instructions = load_instructions()
+    set_streamable_http_instructions(instructions)
+
     ensure_streamable_http_accept_patch()
     ensure_streamable_http_server_patch()
+    ensure_sse_server_patch()
+    ensure_streamable_http_instructions_patch()
+    ensure_sse_post_alias_patch()
 
     normalized_base_path = _normalize_mount_path(base_path)
     sse_path = _join_path(normalized_base_path, "sse")
@@ -89,7 +151,7 @@ def create_app(
 
     app = FastMCP(
         name="mcp-grafana",
-        instructions=INSTRUCTIONS,
+        instructions=instructions,
         host=host,
         port=port,
         mount_path="/",
@@ -100,6 +162,7 @@ def create_app(
         debug=debug,
     )
     register_all(app)
+    _register_streamable_http_alias(app)
     return app
 
 

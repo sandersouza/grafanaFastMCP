@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
@@ -13,6 +14,18 @@ from ..grafana_client import GrafanaClient
 
 
 _BASE_PATH = "/plugins/grafana-ml-app/resources/sift/api/v1"
+
+_DURATION_RE = re.compile(r"(?P<value>\d+(?:\.\d+)?)(?P<unit>ns|us|µs|ms|s|m|h|d)")
+_UNIT_SECONDS = {
+    "ns": 1e-9,
+    "us": 1e-6,
+    "µs": 1e-6,
+    "ms": 1e-3,
+    "s": 1.0,
+    "m": 60.0,
+    "h": 3600.0,
+    "d": 86400.0,
+}
 
 
 def _now() -> datetime:
@@ -126,6 +139,28 @@ def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
     if not value:
         return None
     cleaned = value.strip()
+    if not cleaned:
+        return None
+
+    reference = _now()
+    lowered = cleaned.lower()
+    if lowered == "now":
+        return reference
+    if lowered.startswith("now-") or lowered.startswith("now+"):
+        sign = -1 if lowered.startswith("now-") else 1
+        duration_expr = cleaned[4:]
+        if not duration_expr:
+            raise ValueError("Relative time expressions must include a duration (e.g. now-5m)")
+        total_seconds = 0.0
+        for match in _DURATION_RE.finditer(duration_expr):
+            unit = match.group("unit")
+            factor = _UNIT_SECONDS[unit]
+            total_seconds += float(match.group("value")) * factor
+        if total_seconds == 0.0:
+            raise ValueError(f"Unable to parse duration expression '{duration_expr}'")
+        delta = timedelta(seconds=total_seconds)
+        return reference + (delta if sign > 0 else -delta)
+
     if cleaned.endswith("Z"):
         cleaned = cleaned[:-1] + "+00:00"
     dt = datetime.fromisoformat(cleaned)
@@ -246,4 +281,3 @@ def register(app: FastMCP) -> None:
 
 
 __all__ = ["register"]
-

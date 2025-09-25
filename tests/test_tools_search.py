@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 import pytest
 
+import app.tools as tools
 from app.tools import register_all
+from app.tools.availability import GrafanaCapabilities
 from app.tools.search import (
     _fetch_dashboard,
     _fetch_resource,
@@ -13,6 +15,15 @@ from app.tools.search import (
     _resolve_dashboard_lookup,
 )
 from mcp.server.fastmcp import FastMCP
+
+
+@pytest.fixture(autouse=True)
+def _allow_all_capabilities(monkeypatch: pytest.MonkeyPatch) -> None:
+    capabilities = GrafanaCapabilities(
+        datasource_types=frozenset({"loki", "prometheus", "pyroscope"}),
+        plugin_ids=frozenset({"grafana-irm-app", "grafana-asserts-app", "grafana-ml-app"}),
+    )
+    monkeypatch.setattr(tools, "_resolve_capabilities", lambda: capabilities)
 
 
 def test_search_tool_is_registered() -> None:
@@ -74,6 +85,32 @@ def test_fetch_schema_exposes_string_identifiers() -> None:
     id_schema = schema.get("properties", {}).get("id")
     assert id_schema is not None
     assert id_schema.get("type") == "string"
+
+
+def test_fetch_schema_defines_array_items_for_ids() -> None:
+    app = FastMCP()
+    register_all(app)
+
+    tools = asyncio.run(app.list_tools())
+    tool = next((tool for tool in tools if tool.name == "fetch"), None)
+    assert tool is not None
+
+    schema = tool.inputSchema
+    ids_schema = schema.get("properties", {}).get("ids")
+    assert ids_schema is not None, schema
+    assert ids_schema.get("type") == "array"
+    assert "items" in ids_schema
+    items_schema = ids_schema["items"]
+    assert isinstance(items_schema, dict) and items_schema, ids_schema
+
+    if "anyOf" in items_schema:
+        any_of = items_schema["anyOf"]
+        assert isinstance(any_of, list) and any_of, items_schema
+        item_types = {entry.get("type") for entry in any_of if isinstance(entry, dict)}
+    else:
+        item_types = {items_schema.get("type")}
+
+    assert {"string", "integer", "object"}.issubset(item_types)
 
 
 def test_parse_dashboard_url_handles_relative_and_absolute_paths() -> None:
