@@ -249,8 +249,12 @@ class FastMCP:
         """Ensure schemas used for tool parameters are always valid objects."""
 
         def fallback_items_schema() -> Dict[str, Any]:
+            # Important: do NOT include "array" here because some validators
+            # require any schema with type=="array" to also define an "items"
+            # schema. Since this is a generic fallback used for array items, we
+            # avoid producing nested array schemas without explicit items.
             return {
-                "type": ["boolean", "integer", "number", "string", "object", "array", "null"],
+                "type": ["boolean", "integer", "number", "string", "object", "null"],
             }
 
         def normalize(node: Any) -> Dict[str, Any]:
