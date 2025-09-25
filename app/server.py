@@ -10,6 +10,7 @@ from mcp.server import FastMCP
 from .instructions import load_instructions
 from .patches import (
     ensure_sse_post_alias_patch,
+    ensure_sse_server_patch,
     ensure_streamable_http_accept_patch,
     ensure_streamable_http_instructions_patch,
     ensure_streamable_http_server_patch,
@@ -133,6 +134,7 @@ def create_app(
 
     ensure_streamable_http_accept_patch()
     ensure_streamable_http_server_patch()
+    ensure_sse_server_patch()
     ensure_streamable_http_instructions_patch()
     ensure_sse_post_alias_patch()
 

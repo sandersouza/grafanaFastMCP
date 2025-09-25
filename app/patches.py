@@ -22,6 +22,7 @@ LOGGER = logging.getLogger(__name__)
 
 _PATCH_ACCEPT_APPLIED = False
 _PATCH_STREAMABLE_SERVER_APPLIED = False
+_PATCH_SSE_SERVER_APPLIED = False
 _PATCH_SSE_ALIAS_APPLIED = False
 _PATCH_STREAMABLE_INSTRUCTIONS_APPLIED = False
 
@@ -140,11 +141,53 @@ def ensure_streamable_http_server_patch() -> None:
             timeout_graceful_shutdown=graceful_timeout,
         )
         server = uvicorn.Server(config)
-        await server.serve()
+        setattr(self, "_uvicorn_server", server)
+        try:
+            await server.serve()
+        finally:
+            if getattr(self, "_uvicorn_server", None) is server:
+                setattr(self, "_uvicorn_server", None)
 
     setattr(FastMCP, "_original_run_streamable_http_async", original_impl)
     FastMCP.run_streamable_http_async = patched_run_streamable_http_async  # type: ignore[assignment]
     _PATCH_STREAMABLE_SERVER_APPLIED = True
+
+
+def ensure_sse_server_patch() -> None:
+    """Store the SSE uvicorn server instance for graceful shutdown."""
+
+    global _PATCH_SSE_SERVER_APPLIED
+    if _PATCH_SSE_SERVER_APPLIED:
+        return
+
+    try:
+        original_impl = FastMCP.run_sse_async
+    except AttributeError:
+        LOGGER.debug("SSE server patch skipped: run_sse_async not available")
+        _PATCH_SSE_SERVER_APPLIED = True
+        return
+
+    async def patched_run_sse_async(self: FastMCP, mount_path: str | None = None) -> None:
+        import uvicorn
+
+        starlette_app = self.sse_app(mount_path)
+        config = uvicorn.Config(
+            starlette_app,
+            host=self.settings.host,
+            port=self.settings.port,
+            log_level=self.settings.log_level.lower(),
+        )
+        server = uvicorn.Server(config)
+        setattr(self, "_uvicorn_server", server)
+        try:
+            await server.serve()
+        finally:
+            if getattr(self, "_uvicorn_server", None) is server:
+                setattr(self, "_uvicorn_server", None)
+
+    setattr(FastMCP, "_original_run_sse_async", original_impl)
+    FastMCP.run_sse_async = patched_run_sse_async  # type: ignore[assignment]
+    _PATCH_SSE_SERVER_APPLIED = True
 
 
 def set_streamable_http_instructions(value: str | None) -> None:

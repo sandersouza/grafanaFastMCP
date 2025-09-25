@@ -6,7 +6,9 @@ import copy
 import os
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Union
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from mcp.server.fastmcp import Context, FastMCP
 
@@ -235,20 +237,61 @@ def _apply_json_path(data: Dict[str, Any], path: str, value: Any, remove: bool) 
         _set_at_segment(current, final_segment, value)
 
 
+class DashboardPatchOperation(BaseModel):
+    """Structured representation of a JSON patch operation for dashboards."""
+
+    op: str = Field(
+        description="Operation to perform (supported: add, remove, replace)",
+        pattern="^(add|remove|replace)$",
+    )
+    path: str = Field(description="JSONPath identifying the dashboard field to modify")
+    value: Any | None = Field(
+        default=None,
+        description="Value to apply for add/replace operations. Omit for remove operations.",
+    )
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    def as_mapping(self) -> Dict[str, Any]:
+        payload = self.model_dump(by_alias=True)
+        if self.op == "remove":
+            payload.pop("value", None)
+        return payload
+
+
+PatchOperationInput = Union[DashboardPatchOperation, Mapping[str, Any]]
+
+
+def _normalize_patch_operations(operations: Sequence[PatchOperationInput]) -> List[Dict[str, Any]]:
+    normalized: List[Dict[str, Any]] = []
+    for index, operation in enumerate(operations):
+        if isinstance(operation, DashboardPatchOperation):
+            normalized.append(operation.as_mapping())
+        elif isinstance(operation, Mapping):
+            normalized.append(dict(operation))
+        else:
+            raise TypeError(
+                "Invalid patch operation at index "
+                f"{index}: expected mapping-compatible data, got {type(operation)!r}"
+            )
+    return normalized
+
+
 async def _update_dashboard_with_patches(
     ctx: Context,
     uid: str,
-    operations: List[Dict[str, Any]],
+    operations: Sequence[PatchOperationInput],
     folder_uid: Optional[str],
     message: Optional[str],
     user_id: Optional[int],
 ) -> Any:
+    normalized_operations = _normalize_patch_operations(operations)
     source = await _get_dashboard(ctx, uid)
     dashboard_obj = source.get("dashboard")
     if not isinstance(dashboard_obj, dict):
         raise ValueError("Dashboard payload does not contain a JSON object")
     working_copy: Dict[str, Any] = copy.deepcopy(dashboard_obj)
-    for idx, operation in enumerate(operations):
+    for idx, operation in enumerate(normalized_operations):
         op = str(operation.get("op", ""))
         path = str(operation.get("path", ""))
         if not op or not path:
@@ -305,7 +348,7 @@ async def _update_dashboard(
     ctx: Context,
     dashboard: Optional[Dict[str, Any]],
     uid: Optional[str],
-    operations: Optional[List[Dict[str, Any]]],
+    operations: Optional[Sequence[PatchOperationInput]],
     folder_uid: Optional[str],
     message: Optional[str],
     overwrite: bool,
@@ -556,7 +599,7 @@ def register(app: FastMCP) -> None:
     async def update_dashboard(
         dashboard: Optional[Dict[str, Any]] = None,
         uid: Optional[str] = None,
-        operations: Optional[List[Dict[str, Any]]] = None,
+        operations: Optional[Sequence[PatchOperationInput]] = None,
         folderUid: Optional[str] = None,
         message: Optional[str] = None,
         overwrite: bool = True,

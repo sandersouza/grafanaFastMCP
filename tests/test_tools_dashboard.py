@@ -175,6 +175,55 @@ def test_update_dashboard_with_patches(monkeypatch: pytest.MonkeyPatch, sample_d
     assert len(captured["dashboard"]["panels"]) == 3
     assert captured["folder"] == "folder"
 
+
+def test_update_dashboard_with_structured_operations(
+    monkeypatch: pytest.MonkeyPatch, sample_dashboard: Dict[str, Any]
+) -> None:
+    captured: Dict[str, Any] = {}
+
+    async def fake_get(ctx: Any, uid: str, *, use_cache: bool = True) -> Dict[str, Any]:
+        return deepcopy(sample_dashboard)
+
+    async def fake_post(
+        ctx: Any,
+        dashboard_json: Dict[str, Any],
+        folder: str | None,
+        message: str | None,
+        overwrite: bool,
+        user_id: int | None,
+    ) -> Dict[str, Any]:
+        captured["dashboard"] = dashboard_json
+        captured["folder"] = folder
+        captured["message"] = message
+        captured["overwrite"] = overwrite
+        captured["user_id"] = user_id
+        return {"status": "ok"}
+
+    monkeypatch.setattr(dashboard, "_get_dashboard", fake_get)
+    monkeypatch.setattr(dashboard, "_post_dashboard", fake_post)
+
+    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace()))
+    operations = [
+        dashboard.DashboardPatchOperation(op="replace", path="title", value="Updated"),
+        dashboard.DashboardPatchOperation(op="add", path="panels/-", value={"id": 3}),
+        dashboard.DashboardPatchOperation(op="remove", path="description"),
+    ]
+
+    result = asyncio.run(
+        dashboard._update_dashboard_with_patches(
+            ctx,
+            "uid123",
+            operations,
+            folder_uid=None,
+            message="msg",
+            user_id=7,
+        )
+    )
+    assert result == {"status": "ok"}
+    assert captured["dashboard"]["title"] == "Updated"
+    assert len(captured["dashboard"]["panels"]) == 3
+    assert captured["folder"] == "folder"
+
 def test_apply_dashboard_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DASH_UID", "custom-uid")
     monkeypatch.setenv("PROM_DS_UID", "prom-default")

@@ -24,6 +24,32 @@ from .config import (
 from .server import create_app
 
 
+def _request_shutdown(app: "FastMCP", transport: str) -> None:
+    """Best-effort cleanup when shutting down the FastMCP application."""
+
+    logger = logging.getLogger(__name__)
+
+    session_manager = getattr(app, "_session_manager", None)
+    if session_manager is not None:
+        task_group = getattr(session_manager, "_task_group", None)
+        cancel_scope = getattr(task_group, "cancel_scope", None) if task_group is not None else None
+        if cancel_scope is not None:
+            try:
+                cancel_scope.cancel()
+                logger.debug("Cancelled StreamableHTTP session manager task group")
+            except Exception:  # pragma: no cover - defensive cleanup
+                logger.debug("Failed to cancel StreamableHTTP session manager", exc_info=True)
+
+    if transport == "sse":
+        server = getattr(app, "_uvicorn_server", None)
+        if server is not None:
+            try:
+                server.should_exit = True
+                logger.debug("Requested SSE server shutdown")
+            except Exception:  # pragma: no cover - defensive cleanup
+                logger.debug("Failed to request SSE server shutdown", exc_info=True)
+
+
 def _parse_address(value: str) -> Tuple[str, int]:
     if ":" not in value:
         raise argparse.ArgumentTypeError("Address must be in HOST:PORT format")
@@ -177,7 +203,12 @@ def main(argv: list[str] | None = None) -> None:
         )
 
     mount_path = app.settings.mount_path if transport == "sse" else None
-    app.run(transport, mount_path=mount_path)
+    try:
+        app.run(transport, mount_path=mount_path)
+    except KeyboardInterrupt:
+        logger.info("Received interrupt signal, shutting down Grafana FastMCP server...")
+        _request_shutdown(app, transport)
+        logger.info("Grafana FastMCP server stopped")
 
 if __name__ == "__main__":  # pragma: no cover - manual execution
     main()
