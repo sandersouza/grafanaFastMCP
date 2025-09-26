@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+import json
 import sys
 from contextlib import asynccontextmanager
 from types import ModuleType, SimpleNamespace
@@ -15,6 +16,7 @@ from starlette.routing import Mount, Route
 from starlette.testclient import TestClient
 
 from app import patches
+from app.instructions import format_instructions
 
 
 @pytest.fixture
@@ -25,6 +27,11 @@ def anyio_backend() -> str:
 def test_normalize_media_types_parses_values() -> None:
     result = patches._normalize_media_types("text/html; q=0.8, application/json, */* , application/*;version=1")
     assert result == ["text/html", "application/json", "*/*", "application/*"]
+
+
+def test_normalize_media_types_ignores_empty_segments() -> None:
+    result = patches._normalize_media_types(" , application/json,, text/plain ")
+    assert result == ["application/json", "text/plain"]
 
 
 def test_ensure_streamable_http_accept_patch_relaxes_requirements(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -54,6 +61,20 @@ def test_ensure_streamable_http_accept_patch_relaxes_requirements(monkeypatch: p
 
     patches.ensure_streamable_http_accept_patch()
     assert DummyTransport._check_accept_headers is patched
+
+
+def test_streamable_http_accept_handles_blank_entries(monkeypatch: pytest.MonkeyPatch) -> None:
+    class DummyTransport:
+        def _check_accept_headers(self, request: SimpleNamespace) -> tuple[bool, bool]:
+            raise AssertionError("Original accept check should be replaced")
+
+    monkeypatch.setattr(patches, "StreamableHTTPServerTransport", DummyTransport)
+    monkeypatch.setattr(patches, "_PATCH_ACCEPT_APPLIED", False)
+
+    patches.ensure_streamable_http_accept_patch()
+
+    request = SimpleNamespace(headers={"accept": ", , "})
+    assert DummyTransport._check_accept_headers(DummyTransport(), request) == (True, True)
 
 
 @pytest.mark.anyio("asyncio")
@@ -154,6 +175,69 @@ def test_set_streamable_http_instructions_assigns_attribute(monkeypatch: pytest.
 
     assert getattr(DummyTransport, "_fastmcp_preprompt_text") == "example"
     assert patches._STREAMABLE_HTTP_INSTRUCTIONS == "example"
+
+
+def test_set_streamable_http_instructions_clears_with_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    class DummyTransport:
+        pass
+
+    monkeypatch.setattr(patches, "StreamableHTTPServerTransport", DummyTransport)
+    patches.set_streamable_http_instructions(None)
+
+    assert getattr(DummyTransport, "_fastmcp_preprompt_text") == ""
+    assert patches._STREAMABLE_HTTP_INSTRUCTIONS == ""
+
+
+def test_resolve_request_instructions_prefers_template(monkeypatch: pytest.MonkeyPatch) -> None:
+    request = SimpleNamespace(headers={"x-preprompt-id": "custom-template"})
+
+    monkeypatch.setenv("MCP_PREPROMPT_CUSTOM_TEMPLATE", "Hello {{NAME}}")
+    monkeypatch.setenv("NAME", "Grafana")
+
+    resolved = patches._resolve_request_instructions(request, None)
+
+    assert resolved == format_instructions("Hello {{NAME}}")
+
+
+def test_resolve_request_instructions_uses_tenant(monkeypatch: pytest.MonkeyPatch) -> None:
+    request = SimpleNamespace(headers={"x-tenant": "prod"})
+
+    monkeypatch.setenv("MCP_PREPROMPT_TENANT_PROD", "Tenant instructions")
+
+    resolved = patches._resolve_request_instructions(request, None)
+
+    assert resolved == format_instructions("Tenant instructions")
+
+
+def test_resolve_request_instructions_falls_back_to_header() -> None:
+    request = SimpleNamespace(headers={"x-preprompt": "  direct instructions "})
+
+    resolved = patches._resolve_request_instructions(request, None)
+
+    assert resolved == format_instructions("direct instructions")
+
+
+def test_resolve_request_instructions_uses_default_when_available() -> None:
+    request = SimpleNamespace(headers={})
+
+    resolved = patches._resolve_request_instructions(request, "  default text ")
+
+    assert resolved == format_instructions("default text")
+
+
+def test_resolve_request_instructions_returns_none_without_sources() -> None:
+    request = SimpleNamespace(headers={})
+
+    assert patches._resolve_request_instructions(request, None) is None
+
+
+def test_build_session_update_event_serializes_payload() -> None:
+    event = patches._build_session_update_event("hello world")
+
+    assert event["event"] == "message"
+
+    payload = json.loads(event["data"])
+    assert payload == {"type": "session.update", "session": {"instructions": "hello world"}}
 
 
 def test_ensure_streamable_http_instructions_patch_noop_without_method(monkeypatch: pytest.MonkeyPatch) -> None:
