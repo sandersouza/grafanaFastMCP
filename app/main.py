@@ -24,7 +24,7 @@ from .config import (
 from .server import create_app
 
 
-def _request_shutdown(app: "FastMCP", transport: str) -> None:
+def _request_shutdown(app: object, transport: str) -> None:
     """Best-effort cleanup when shutting down the FastMCP application."""
 
     logger = logging.getLogger(__name__)
