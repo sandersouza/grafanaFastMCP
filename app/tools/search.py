@@ -175,12 +175,45 @@ async def _fetch_resource(
 
 
 async def _search_dashboards(query: Optional[str], ctx: Context) -> Any:
+    """
+    Search for Grafana dashboards and return a consolidated response.
+    
+    This function wraps the raw Grafana search API response in a structured object
+    to prevent JSON chunking issues when used with streamable HTTP transport
+    alongside ChatGPT/OpenAI. Instead of returning the raw array from Grafana's
+    /search endpoint, we return a consolidated object with metadata.
+    
+    Args:
+        query: Optional search query string
+        ctx: MCP context for configuration
+        
+    Returns:
+        Dict containing:
+        - dashboards: List of dashboard objects from Grafana API
+        - total_count: Number of dashboards found
+        - query: The original search query
+        - type: Response type identifier ('dashboard_search_results')
+    """
     config = get_grafana_config(ctx)
     client = GrafanaClient(config)
     params: Dict[str, Any] = {"type": "dash-db"}
     if query:
         params["query"] = query
-    return await client.get_json("/search", params=params)
+    
+    # Get the raw JSON response from Grafana
+    raw_response = await client.get_json("/search", params=params)
+    
+    # Ensure we have a list, even if the API returns something unexpected
+    dashboards = raw_response if isinstance(raw_response, list) else []
+    
+    # Return a consolidated response object to avoid chunking issues
+    # in streamable HTTP with ChatGPT/OpenAI
+    return {
+        "dashboards": dashboards,
+        "total_count": len(dashboards),
+        "query": query or "",
+        "type": "dashboard_search_results"
+    }
 
 
 def _normalize_search_query(raw: Optional[str]) -> Optional[str]:
@@ -199,7 +232,9 @@ def register(app: FastMCP) -> None:
         name="search_dashboards",
         title="Search dashboards",
         description=(
-            "Search Grafana dashboards by a query string. Returns matching dashboards including title, UID, folder, tags, and URL metadata."
+            "Search Grafana dashboards by a query string. Returns a consolidated response object "
+            "containing matching dashboards, total count, query, and metadata. "
+            "This format prevents JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
         ),
     )
     async def search_dashboards(
@@ -215,7 +250,9 @@ def register(app: FastMCP) -> None:
         name="search",
         title="Search Grafana",
         description=(
-            "General purpose search endpoint used by MCP clients. Currently searches Grafana dashboards and returns matching metadata."
+            "General purpose search endpoint used by MCP clients. Returns a consolidated response object "
+            "containing matching dashboard metadata, total count, and query info. "
+            "This format prevents JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
         ),
     )
     async def search(
