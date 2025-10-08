@@ -168,7 +168,7 @@ async def _fetch_resource(
             item=item,
         )
         if not resolved_uid and not resolved_numeric_id:
-            raise ValueError("A dashboard UID, numeric ID, or URL is required to fetch dashboard details")
+            raise ValueError("An UID, numeric ID, or URL is required to fetch dashboard details")
         return await _fetch_dashboard(client, uid=resolved_uid, numeric_id=resolved_numeric_id)
 
     raise ValueError(f"Unsupported resource type '{resolved_type}' for fetch")
@@ -199,13 +199,13 @@ async def _search_dashboards(query: Optional[str], ctx: Context) -> Any:
     params: Dict[str, Any] = {"type": "dash-db"}
     if query:
         params["query"] = query
-    
+
     # Get the raw JSON response from Grafana
     raw_response = await client.get_json("/search", params=params)
-    
+
     # Ensure we have a list, even if the API returns something unexpected
     dashboards = raw_response if isinstance(raw_response, list) else []
-    
+
     # Return a consolidated response object to avoid chunking issues
     # in streamable HTTP with ChatGPT/OpenAI
     return {
@@ -250,8 +250,8 @@ def register(app: FastMCP) -> None:
         name="search",
         title="Search Grafana",
         description=(
-            "General purpose search endpoint used by MCP clients. Returns a consolidated response object "
-            "containing matching dashboard metadata, total count, and query info. "
+            "General purpose search endpoint used by MCP clients. Returns a consolidated response "
+            "object containing matching dashboard metadata, total count, and query info. "
             "This format prevents JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
         ),
     )
