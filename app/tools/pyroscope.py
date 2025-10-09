@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from mcp.server.fastmcp import Context, FastMCP
 
@@ -162,7 +162,10 @@ def register(app: FastMCP) -> None:
     @app.tool(
         name="list_pyroscope_label_names",
         title="List Pyroscope label names",
-        description="List available label names in a Pyroscope datasource.",
+        description=(
+            "List available label names in a Pyroscope datasource. "
+            "Returns a consolidated response object to prevent JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
+        ),
     )
     async def list_pyroscope_label_names(
         dataSourceUid: str,
@@ -170,15 +173,27 @@ def register(app: FastMCP) -> None:
         startRfc3339: Optional[str] = None,
         endRfc3339: Optional[str] = None,
         ctx: Optional[Context] = None,
-    ) -> List[str]:
+    ) -> Any:
         if ctx is None:
             raise ValueError("Context injection failed for list_pyroscope_label_names")
-        return await _list_label_names(ctx, dataSourceUid, matchers, startRfc3339, endRfc3339)
+        labels = await _list_label_names(ctx, dataSourceUid, matchers, startRfc3339, endRfc3339)
+        return {
+            "labels": labels,
+            "total_count": len(labels),
+            "datasource_uid": dataSourceUid,
+            "matchers": matchers,
+            "start": startRfc3339,
+            "end": endRfc3339,
+            "type": "pyroscope_label_names_result"
+        }
 
     @app.tool(
         name="list_pyroscope_label_values",
         title="List Pyroscope label values",
-        description="List values for a specific label within a Pyroscope datasource.",
+        description=(
+            "List values for a specific label within a Pyroscope datasource. "
+            "Returns a consolidated response object to prevent JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
+        ),
     )
     async def list_pyroscope_label_values(
         dataSourceUid: str,
@@ -187,25 +202,46 @@ def register(app: FastMCP) -> None:
         startRfc3339: Optional[str] = None,
         endRfc3339: Optional[str] = None,
         ctx: Optional[Context] = None,
-    ) -> List[str]:
+    ) -> Any:
         if ctx is None:
             raise ValueError("Context injection failed for list_pyroscope_label_values")
-        return await _list_label_values(ctx, dataSourceUid, name, matchers, startRfc3339, endRfc3339)
+        values = await _list_label_values(ctx, dataSourceUid, name, matchers, startRfc3339, endRfc3339)
+        return {
+            "values": values,
+            "total_count": len(values),
+            "label_name": name,
+            "datasource_uid": dataSourceUid,
+            "matchers": matchers,
+            "start": startRfc3339,
+            "end": endRfc3339,
+            "type": "pyroscope_label_values_result"
+        }
 
     @app.tool(
         name="list_pyroscope_profile_types",
         title="List Pyroscope profile types",
-        description="List profile types available in a Pyroscope datasource.",
+        description=(
+            "List profile types available in a Pyroscope datasource. "
+            "Returns a consolidated response object to prevent JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
+        ),
     )
     async def list_pyroscope_profile_types(
         dataSourceUid: str,
         startRfc3339: Optional[str] = None,
         endRfc3339: Optional[str] = None,
         ctx: Optional[Context] = None,
-    ) -> List[str]:
+    ) -> Any:
         if ctx is None:
             raise ValueError("Context injection failed for list_pyroscope_profile_types")
-        return await _list_profile_types(ctx, dataSourceUid, startRfc3339, endRfc3339)
+        types = await _list_profile_types(ctx, dataSourceUid, startRfc3339, endRfc3339)
+        return {
+            "profile_types": types,
+            "total_count": len(types),
+            "datasource_uid": dataSourceUid,
+            "start": startRfc3339,
+            "end": endRfc3339,
+            "type": "pyroscope_profile_types_result"
+        }
 
     @app.tool(
         name="fetch_pyroscope_profile",
