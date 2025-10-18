@@ -8,6 +8,12 @@ VENV_PIP := $(VENV_BIN)/pip
 REQUIREMENTS ?= requirements.txt
 PACKAGE_NAME ?= grafana-mcp
 
+# uv / uvx tooling
+UV ?= uv
+UVX ?= uvx
+UV_GROUPS ?= --all-groups
+UV_RUN ?= $(UV) run
+
 IMAGE_NAME ?= grafana-ai-data-driven
 CONTAINER_NAME ?= grafana-ai-data-driven
 APP_PORT ?= 8000
@@ -16,6 +22,53 @@ BASE_PATH ?= /
 LOG_LEVEL ?= INFO
 TRANSPORT ?= stdio
 ENV_FILE ?= .env
+
+.PHONY: uv-bootstrap
+uv-bootstrap:
+	@if ! command -v $(UV) >/dev/null 2>&1; then \
+		curl -Ls https://astral.sh/uv/install.sh | sh; \
+		. $$HOME/.cargo/env >/dev/null 2>&1 || true; \
+	fi
+	@$(UV) --version
+
+.PHONY: uv-sync
+uv-sync: uv-bootstrap
+	@$(UV) sync $(UV_GROUPS)
+
+.PHONY: uv-local
+uv-local: uv-sync
+	@set -a; \
+		if [ -f "$(ENV_FILE)" ]; then . "$(ENV_FILE)"; fi; \
+		set +a; \
+		$(UV_RUN) -m app --address $(APP_ADDRESS) --base-path $(BASE_PATH) --log-level $(LOG_LEVEL) --transport $(TRANSPORT)
+
+.PHONY: uv-test
+uv-test: uv-sync
+	@$(UV_RUN) pytest -q
+
+.PHONY: uv-cov
+uv-cov: uv-sync
+	@$(UV_RUN) pytest --cov=. --cov-report term-missing
+
+.PHONY: uv-lint
+uv-lint: uv-sync
+	@$(UV_RUN) ruff check .
+
+.PHONY: uv-fmt
+uv-fmt: uv-sync
+	@$(UV_RUN) ruff format .
+
+.PHONY: uv-typecheck
+uv-typecheck: uv-sync
+	@$(UV_RUN) mypy app tests
+
+.PHONY: uv-package
+uv-package: uv-sync
+	@$(UVX) pyinstaller --clean --onefile --name $(PACKAGE_NAME) run_app.py
+
+.PHONY: uv-lock
+uv-lock:
+	@$(UV) lock
 
 .PHONY: venv
 venv:
@@ -81,3 +134,14 @@ help:
 	@echo "  make clean-docker  - Remove container/imagem do Docker"
 	@echo "  make clean-podman  - Remove container/imagem do Podman"
 	@echo "  make help          - Mostra este help"
+	@echo ""
+	@echo "Atalhos com uv/uvx (recomendado):"
+	@echo "  make uv-sync       - Sincroniza dependências a partir de pyproject.toml/uv.lock"
+	@echo "  make uv-local      - Executa o servidor usando uv run (carrega .env automaticamente)"
+	@echo "  make uv-test       - Roda testes com pytest"
+	@echo "  make uv-cov        - Roda testes com cobertura"
+	@echo "  make uv-lint       - Roda ruff check"
+	@echo "  make uv-fmt        - Roda ruff format"
+	@echo "  make uv-typecheck  - Roda mypy"
+	@echo "  make uv-package    - Gera executável via uvx pyinstaller"
+	@echo "  make uv-lock       - Atualiza/regenera o lockfile (uv.lock)"

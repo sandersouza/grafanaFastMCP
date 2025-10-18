@@ -45,6 +45,10 @@ htmlcov/
 *.key
 *.crt
 
+# uv artifacts (lockfile é versionado)
+.uv/
+# uv.lock (TRACKED)
+
 # SonarQube Exclusions
 sonar-project.properties
 sonar-cacerts.jks

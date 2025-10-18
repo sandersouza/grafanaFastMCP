@@ -1,3 +1,7 @@
+[![PR Tests (3.13)](https://github.com/sandersouza/grafanaFastMCP/actions/workflows/pr-package.yml/badge.svg)](https://github.com/sandersouza/grafanaFastMCP/actions/workflows/pr-package.yml)
+[![Python package](https://github.com/sandersouza/grafanaFastMCP/actions/workflows/python-package.yml/badge.svg)](https://github.com/sandersouza/grafanaFastMCP/actions/workflows/python-package.yml)
+[![Python Version](https://img.shields.io/badge/python-3.13%2B-blue.svg)](https://www.python.org/downloads/release/python-3130/)
+
 <a href="https://link.mercadopago.com.br/buymecoke"><img align="right" src="donation.png" alt="Me compre um café!" width="140"></a>
 
 # Grafana FastMCP Server / CLI
@@ -37,8 +41,65 @@ Consulte [CHANGELOG.md](./CHANGELOG.md) para detalhes das versões publicadas.
 Cada submódulo em `app/tools/` registra um conjunto de ferramentas MCP, abrangendo desde administração de usuários até consultas de observabilidade e automação de incidentes.
 
 ## Requisitos
-- Python 3.11 ou superior
+- Python 3.13 ou superior
 - Instância Grafana acessível (local ou remota) e credenciais de API válidas
+
+
+### Gerenciamento de dependências (uv/uvx)
+Este repositório adota o [uv](https://github.com/astral-sh/uv) como gerenciador de dependências e execução. Você pode continuar usando `venv`/`pip` tradicionalmente, mas recomendamos `uv` pelos benefícios de velocidade, reprodutibilidade (`uv.lock`) e simplificação de scripts.
+
+**Dependências não são pinadas**: O projeto sempre buscará as versões mais recentes compatíveis de cada pacote. O arquivo `uv.lock` é versionado para garantir builds reprodutíveis e CI estável.
+
+Passos rápidos:
+
+1. Instale o uv (uma vez):
+```bash
+curl -Ls https://astral.sh/uv/install.sh | sh
+```
+
+2. Sincronize as dependências (runtime + dev):
+```bash
+uv sync --dev --all-extras
+```
+
+3. Rode o servidor:
+```bash
+uv run -m app --address localhost:8000 --log-level INFO --transport stdio
+```
+
+4. Comandos comuns:
+```bash
+# Testes
+uv run pytest
+
+# Cobertura
+uv run pytest --cov=. --cov-report term-missing
+
+# Lint e formatação (ruff)
+uv run ruff check .
+uv run ruff format .
+
+# Type checking
+uv run mypy app tests
+
+# Empacotar com PyInstaller
+uvx pyinstaller --clean --onefile --name grafana-mcp run_app.py
+```
+
+
+**Testes unitários:**
+- O badge "PR Tests (3.13)" acima reflete o status dos testes que rodarão para cada Pull Request (Python 3.13).
+- O badge "Python package" reflete o status do pipeline principal (push para main).
+- Para rodar localmente com uv/uvx:
+  - `uv run pytest` (unitários)
+  - `uv run pytest --cov=. --cov-report term-missing` (cobertura)
+  - `make uv-test` (atalho Makefile)
+  - `make uv-cov` (cobertura via Makefile)
+
+**Construção de artefatos em PRs:**
+- Para gerar binários/wheel no contexto de um PR, adicione o rótulo `build-artifacts` ao PR. Isso acionará o job `build-artifacts` que constrói e anexa os artefatos ao workflow como `pr-build-artifacts`.
+
+**Atualize o lockfile**: Ao atualizar/alterar pacotes, rode `uv lock` para garantir builds determinísticos.
 
 ## Configuração
 A aplicação lê os parâmetros de conexão a partir de variáveis de ambiente, argumentos de linha de comando ou cabeçalhos HTTP. As principais variáveis disponíveis em `app/config.py` são:
@@ -102,6 +163,19 @@ Variáveis como `APP_ADDRESS`, `BASE_PATH`, `STREAMABLE_HTTP_PATH`, `LOG_LEVEL`,
 
 Após executar `make package`, o binário resultante pode ser distribuído como comando único, sem depender do Python local ou do virtualenv. Os assets e dependências Python são incorporados pelo PyInstaller.
 
+### Atalhos com uv/uvx
+Se preferir usar `uv`, os mesmos fluxos estão mapeados em alvos Make:
+
+- `make uv-sync` — instala/atualiza dependências (inclui grupos de dev)
+- `make uv-local` — executa o servidor com `uv run`
+- `make uv-test` — executa testes
+- `make uv-cov` — executa testes com cobertura
+- `make uv-lint` — ruff check
+- `make uv-fmt` — ruff format
+- `make uv-typecheck` — mypy
+- `make uv-package` — empacota com `uvx pyinstaller`
+- `make uv-lock` — atualiza o `uv.lock`
+
 ### Containers
 - `make docker` / `make podman`: empacotam a aplicação em uma imagem Docker ou Podman.
 
@@ -111,8 +185,8 @@ Os alvos de containers respeitam variáveis como `IMAGE_NAME`, `CONTAINER_NAME`,
 
 O projeto utiliza `pytest` para validar fluxos críticos como carregamento de configuração, leitura das instruções padrão, negociação do transporte Streamable HTTP e ferramentas MCP para buscas e Grafana Asserts. Para rodar a suíte localmente:
 
-1. Crie (ou atualize) o ambiente virtual com `make venv`.
-2. Ative o virtualenv (`source .venv/bin/activate`) ou invoque os binários diretamente em `.venv/bin/`.
+1. Com uv: `make uv-sync && make uv-test`
+2. Com venv/pip: crie (ou atualize) o ambiente virtual com `make venv` e execute `pytest`.
 3. Execute `pytest` na raiz do repositório para disparar os 197 testes atuais.
 
 O comando também está disponível via `python -m pytest` caso prefira não expor o executável instalado no virtualenv. Mantê-lo em dia ajuda a garantir compatibilidade contínua com os conectores MCP suportados.
@@ -122,6 +196,10 @@ O comando também está disponível via `python -m pytest` caso prefira não exp
 Para gerar relatórios de cobertura, instale o plugin opcional `pytest-cov` dentro do virtualenv e execute a suíte com a flag `--cov`:
 
 ```bash
+# via uv
+uv run pytest --cov=. --cov-report term-missing
+
+# via pip/venv
 pip install pytest pytest-cov
 pytest --cov=. --cov-report term-missing
 ```
@@ -224,7 +302,7 @@ Com `python -m app --transport streamable-http`, o servidor expõe um único end
 
 **🚀 Novo na v1.1.0**: Todas as tools agora retornam respostas consolidadas que eliminam problemas de chunking JSON, proporcionando:
 - ✅ **Performance 90% melhor** em operações de listagem
-- ✅ **Zero timeouts** por fragmentação de resposta  
+- ✅ **Zero timeouts** por fragmentação de resposta
 - ✅ **Sessões estáveis** sem perda de conexão
 - ✅ **Compatibilidade 100%** com ChatGPT/OpenAI
 

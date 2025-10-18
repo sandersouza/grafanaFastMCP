@@ -1,0 +1,79 @@
+name: PR tests (Python 3.13)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install project and test deps
+        run: |
+          python -m pip install --upgrade pip
+          # Install test tools (runtime deps will be installed via uv sync when available)
+          python -m pip install pytest pytest-asyncio pytest-cov ruff
+
+      - name: Install uv and uvx
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install uv uvx || true
+
+      - name: Sync deps with uv (preferred) or pip fallback
+        run: |
+          if command -v uv >/dev/null 2>&1; then
+            echo "uv found — syncing dependencies from uv.lock"
+            uv sync --dev --all-extras || (
+              echo "uv sync failed, falling back to pip install ." && python -m pip install .
+            )
+          else
+            echo "uv not found — installing package via pip"
+            python -m pip install .
+          fi
+
+      - name: Run unit tests
+        run: |
+          uv run -m pytest -q || pytest -q
+
+  build-artifacts:
+    needs: tests
+    runs-on: ubuntu-latest
+    if: contains(join(github.event.pull_request.labels.*.name, ','), 'build-artifacts')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.13'
+
+      - name: Install build deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build pyinstaller
+
+      - name: Build wheel
+        run: |
+          python -m build --wheel -o dist
+
+      - name: Build single-file executable
+        run: |
+          pyinstaller --clean --onefile --name grafana-mcp run_app.py || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-build-artifacts
+          path: |
+            dist/*.whl
+            dist/grafana-mcp*
+            dist/*grafana-mcp*
+            dist/*.exe
+            dist/*.tar.gz
