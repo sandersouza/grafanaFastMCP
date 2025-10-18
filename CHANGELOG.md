@@ -1,6 +1,39 @@
 # Changelog
 Todas as mudanças notáveis deste projeto são registradas neste arquivo. Este formato segue as recomendações do "Keep a Changelog" e o projeto adota versionamento semântico (semver).
 
+## [v1.2.0] – 2025-10-18
+### 🚀 Adicionado
+- Suporte oficial a `uv`/`uvx` como gerenciador de dependências e execução (pyproject + `uv.lock`).
+- Arquivo `COPILOT.md` com instruções padrão para agentes e contribuidores e integração com settings do VS Code (`.vscode/settings.json`).
+- Workflow de PR (`.github/workflows/pr-package.yml`) que executa testes em Python 3.13 e opcionalmente constrói/anexa artefatos quando o rótulo `build-artifacts` é aplicado ao PR.
+- Configuração Hatch explicitando os pacotes a empacotar (`[tool.hatch.build.targets.wheel] packages = ["app", "mcp"]`).
+
+### 🔧 Alterado
+- Baseline do projeto elevada para **Python 3.13+** (`requires-python` em `pyproject.toml`, classifiers e mypy).
+- Dependências runtime e de desenvolvimento deixadas sem pinagem direta (gerenciadas por `uv`); `uv.lock` versionado para builds determinísticos.
+- `pyproject.toml` reestruturado para compatibilidade com `uv` (`[tool.uv] dev-dependencies`) e correção de problemas de parsing TOML.
+- Makefile e atalhos expandidos para fluxos `uv-*` (sync, local, test, cov, lint, fmt, typecheck, package, lock).
+- README atualizado para documentar o novo fluxo com `uv`, badges de CI/PR e instruções sobre como gerar artefatos em PRs.
+
+### 🐛 Corrigido
+- Erros de parsing do `pyproject.toml` que impediam o `uv` de construir o projeto em modo editável; corrigido e validado com `tomllib`.
+- Problema de build editable com `hatchling` resolvido através da configuração explícita de pacotes no `pyproject.toml`.
+
+### 🛠 CI / Build
+- Workflow PR reduzido para executar testes somente em Python 3.13 por padrão (rápido feedback para reviewers).
+- Pipeline principal (`.github/workflows/python-package.yml`) restrito para rodar em push para `main` usando Python 3.13.
+- Job condicional `build-artifacts` (PR) que constrói wheel e binário com PyInstaller quando o rótulo `build-artifacts` é aplicado.
+
+### 📚 Documentação
+- `README.md` atualizado com instruções para `uv`, badges reais do repositório, explicação sobre o rótulo `build-artifacts` e nota sobre baseline Python 3.13+.
+- Adicionada seção `COPILOT.md` com regras de atuação para agentes/Colaboradores (guia de qualidade e checklist rápido).
+
+### 🧪 Testes
+- Testes rodando com `uv` confirmados localmente; suíte atual (197 testes) passou após mudanças.
+
+### 🔄 Compatibilidade
+- Mantida compatibilidade com fluxo antigo (`venv`/`pip`) como fallback. `uv` é o fluxo recomendado para desenvolvimento e CI.
+
 ## [v1.1.0] – 2025-10-08
 ### 🚀 Adicionado
 - Padrão de **resposta consolidada** para todas as tools que retornam listas/arrays
@@ -97,7 +130,7 @@ Todas as mudanças notáveis deste projeto são registradas neste arquivo. Este 
 - [[`d58bf7a`](https://github.com/sandersouza/grafanaFastMCP/commit/d58bf7a)] ddcomprehensive guidance for resource updates, dashboards, and Prom…
 - [[`88a3c8c`](https://github.com/sandersouza/grafanaFastMCP/commit/88a3c8c)] A Improvedashboard tool schema and graceful shutdown
 - [[`b583a96`](https://github.com/sandersouza/grafanaFastMCP/commit/b583a96)] Refinefallback schema by excluding "array" type to prevent nested ar…
-- [[`b85c39b`](https://github.com/sandersouza/grafanaFastMCP/commit/b85c39b)] Updatedocumentation and tests: replace release notes with changelog,… 
+- [[`b85c39b`](https://github.com/sandersouza/grafanaFastMCP/commit/b85c39b)] Updatedocumentation and tests: replace release notes with changelog,…
 
 ## [v1.0.0] – 2025-02-08
 ### Adicionado

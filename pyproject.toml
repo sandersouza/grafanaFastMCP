@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling>=1.18.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "grafana-fastmcp"
+version = "1.2.0"
+description = "Python Grafana FastMCP server/CLI with SSE, Streamable HTTP and STDIO transports"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Alessander de Souza Goulart" }
+]
+keywords = ["grafana", "mcp", "observability", "prometheus", "loki", "pyroscope", "oncall", "sift"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.13",
+  "License :: OSI Approved :: Apache Software License",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Libraries"
+]
+dependencies = [
+  "httpx",
+  "mcp",
+  "python-dotenv",
+  "starlette"
+]
+
+[project.optional-dependencies]
+sse = [
+  "uvicorn"
+]
+
+[project.scripts]
+grafana-mcp = "app.main:main"
+
+[project.urls]
+Homepage = "https://github.com/sandersouza/grafanaFastMCP"
+Repository = "https://github.com/sandersouza/grafanaFastMCP"
+Issues = "https://github.com/sandersouza/grafanaFastMCP/issues"
+
+# Hatch build configuration: explicitly include project packages
+[tool.hatch.build.targets.wheel]
+packages = [
+  "app",
+  "mcp"
+]
+
+# uv dependency groups for dev/test/lint flows
+[tool.uv]
+dev-dependencies = [
+  "mypy",
+  "pytest",
+  "pytest-asyncio",
+  "pytest-cov",
+  "ruff"
+]
+
+# Optional tool configs (kept minimal; project already has pytest.ini and ruff cache)
+[tool.mypy]
+python_version = "3.13"
+strict = false
+warn_unused_ignores = true
