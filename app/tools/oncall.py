@@ -177,17 +177,28 @@ def register(app: FastMCP) -> None:
     @app.tool(
         name="list_oncall_schedules",
         title="List OnCall schedules",
-        description="List Grafana OnCall schedules with optional filtering by schedule ID or team ID.",
+        description=(
+            "List Grafana OnCall schedules with optional filtering by schedule ID or team ID. "
+            "Returns a consolidated response object to prevent JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
+        ),
     )
     async def list_oncall_schedules(
         scheduleId: Optional[str] = None,
         teamId: Optional[str] = None,
         page: Optional[int] = None,
         ctx: Optional[Context] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> Any:
         if ctx is None:
             raise ValueError("Context injection failed for list_oncall_schedules")
-        return await _list_schedules(ctx, scheduleId, teamId, page)
+        schedules = await _list_schedules(ctx, scheduleId, teamId, page)
+        return {
+            "schedules": schedules,
+            "total_count": len(schedules),
+            "schedule_id": scheduleId,
+            "team_id": teamId,
+            "page": page,
+            "type": "oncall_schedules_result"
+        }
 
     @app.tool(
         name="get_oncall_shift",
@@ -221,36 +232,60 @@ def register(app: FastMCP) -> None:
     @app.tool(
         name="list_oncall_teams",
         title="List OnCall teams",
-        description="List teams configured in Grafana OnCall.",
+        description=(
+            "List teams configured in Grafana OnCall. "
+            "Returns a consolidated response object to prevent JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
+        ),
     )
     async def list_oncall_teams(
         page: Optional[int] = None,
         ctx: Optional[Context] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> Any:
         if ctx is None:
             raise ValueError("Context injection failed for list_oncall_teams")
-        return await _get_team_list(ctx, page)
+        teams = await _get_team_list(ctx, page)
+        return {
+            "teams": teams,
+            "total_count": len(teams),
+            "page": page,
+            "type": "oncall_teams_result"
+        }
 
     @app.tool(
         name="list_oncall_users",
         title="List OnCall users",
-        description="List Grafana OnCall users or retrieve a specific user by ID.",
+        description=(
+            "List Grafana OnCall users or retrieve a specific user by ID. "
+            "Returns a consolidated response object to prevent JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
+        ),
     )
     async def list_oncall_users(
         userId: Optional[str] = None,
         username: Optional[str] = None,
         page: Optional[int] = None,
         ctx: Optional[Context] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> Any:
         if ctx is None:
             raise ValueError("Context injection failed for list_oncall_users")
         if userId:
             try:
                 user = await _get_user(ctx, userId)
+                return {
+                    "users": [user],
+                    "total_count": 1,
+                    "user_id": userId,
+                    "type": "oncall_users_result"
+                }
             except ValueError as exc:
                 raise ValueError(f"Failed to fetch OnCall user '{userId}': {exc}") from exc
-            return [user]
-        return await _get_users_list(ctx, page, username)
+        users = await _get_users_list(ctx, page, username)
+        return {
+            "users": users,
+            "total_count": len(users),
+            "username": username,
+            "page": page,
+            "type": "oncall_users_result"
+        }
 
 
 __all__ = ["register"]

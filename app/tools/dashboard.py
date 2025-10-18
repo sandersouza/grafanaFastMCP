@@ -61,6 +61,14 @@ async def _post_dashboard(
     overwrite: bool,
     user_id: Optional[int],
 ) -> Any:
+    """
+    Post dashboard to Grafana API and return a consolidated response.
+    
+    This function wraps the raw Grafana dashboard creation/update response 
+    to prevent JSON chunking issues when used with streamable HTTP transport
+    alongside ChatGPT/OpenAI. Instead of returning the raw response from
+    Grafana's /dashboards/db endpoint, we return a consolidated summary.
+    """
     config = get_grafana_config(ctx)
     client = GrafanaClient(config)
     payload: Dict[str, Any] = {
@@ -73,8 +81,34 @@ async def _post_dashboard(
         payload["message"] = message
     if user_id is not None:
         payload["userId"] = user_id
+    
     try:
-        return await client.post_json("/dashboards/db", json=payload)
+        # Get the raw response from Grafana
+        raw_response = await client.post_json("/dashboards/db", json=payload)
+        
+        # Extract key information for a consolidated response
+        dashboard_title = dashboard.get("title", "Unknown Dashboard")
+        dashboard_uid = dashboard.get("uid", "")
+        
+        # Return a consolidated response object to avoid chunking issues
+        # in streamable HTTP with ChatGPT/OpenAI
+        return {
+            "status": "success",
+            "operation": "update" if dashboard.get("id") else "create",
+            "dashboard": {
+                "uid": dashboard_uid,
+                "title": dashboard_title,
+                "url": raw_response.get("url", ""),
+                "id": raw_response.get("id", 0),
+                "version": raw_response.get("version", 1)
+            },
+            "message": message or "",
+            "folder_uid": folder_uid or "",
+            "overwrite": overwrite,
+            "grafana_response": raw_response,
+            "type": "dashboard_operation_result"
+        }
+        
     except GrafanaAPIError as exc:
         if exc.status_code == 412 and "name-exists" in exc.message:
             raise ValueError(
@@ -592,7 +626,10 @@ def register(app: FastMCP) -> None:
         name="update_dashboard",
         title="Create or update dashboard",
         description=(
-            "Create a new dashboard or update an existing one. Provide either the full dashboard JSON (for create/replace) "
+            "Create a new dashboard or update an existing one. Returns a consolidated response object "
+            "with operation status, dashboard metadata, and success confirmation. "
+            "This format prevents JSON chunking issues in streamable HTTP with ChatGPT/OpenAI. "
+            "Provide either the full dashboard JSON (for create/replace) "
             "or supply a dashboard UID with patch operations for targeted edits."
         ),
     )

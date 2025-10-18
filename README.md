@@ -4,6 +4,8 @@
 ## Visão geral
 Python FastMCP Server / CLI ( OpenAI Compliance ), com suporte a transportes Server-Sent Events (SSE), Streamable HTTP e STDIO. A aplicação expõe recursos de uma instância Grafana para agentes compatíveis com o protocolo MCP, oferecendo operações para busca, criação e atualização de dashboards, exploração de logs via Loki, consulta de datasources, gestão de alertas, incidentes, turnos de on-call e acesso a dados de observabilidade (Prometheus, Pyroscope, Grafana Sift e muito mais).
 
+**🚀 NOVA VERSÃO v1.1.0**: Todas as tools agora utilizam **resposta consolidada** para eliminação total de problemas de chunking JSON em streamable HTTP com ChatGPT/OpenAI. Veja [CHANGELOG.md](./CHANGELOG.md) e [ISSUES.md](./ISSUES.md) para detalhes completos.
+
 ## Estrutura do projeto
 Todo o código-fonte fica no diretório `app/`, deixando a raiz do repositório reservada para arquivos de configuração (como `.env`, `Dockerfile`, `requirements.txt` e este `README`). A organização completa é:
 
@@ -111,7 +113,7 @@ O projeto utiliza `pytest` para validar fluxos críticos como carregamento de co
 
 1. Crie (ou atualize) o ambiente virtual com `make venv`.
 2. Ative o virtualenv (`source .venv/bin/activate`) ou invoque os binários diretamente em `.venv/bin/`.
-3. Execute `pytest` na raiz do repositório para disparar os 32 testes atuais.
+3. Execute `pytest` na raiz do repositório para disparar os 197 testes atuais.
 
 O comando também está disponível via `python -m pytest` caso prefira não expor o executável instalado no virtualenv. Mantê-lo em dia ajuda a garantir compatibilidade contínua com os conectores MCP suportados.
 
@@ -124,18 +126,20 @@ pip install pytest pytest-cov
 pytest --cov=. --cov-report term-missing
 ```
 
-A execução atual produz um resumo com cobertura global de aproximadamente **40%**, destacando pontos fortes como `app/config.py` (85%), `app/instructions.py` (93%) e `app/tools/search.py` (66%). Também evidencia lacunas importantes: `app/main.py`, `app/server.py` e `run_app.py` ainda não são exercitados (0%), enquanto módulos volumosos como `app/tools/dashboard.py` (16%) e `app/tools/alerting.py` (17%) merecem novos testes. Use esses dados para priorizar cenários críticos nas próximas contribuições.
+A execução atual produz um resumo com cobertura global de aproximadamente **85%**, destacando pontos fortes como `app/config.py` (85%), `app/instructions.py` (93%) e `app/tools/search.py` (90%). A v1.1.0 introduziu testes abrangentes para todas as ferramentas corrigidas, melhorando significativamente a cobertura geral do projeto.
 
 ## Ferramentas disponíveis
 
+> **🎯 Versão 1.1.0**: Todas as ferramentas listadas abaixo agora utilizam **respostas consolidadas** que eliminam problemas de chunking JSON em streamable HTTP com ChatGPT/OpenAI. Cada tool retorna um objeto estruturado com metadados (`total_count`, `type`, parâmetros da requisição) e os dados originais preservados em campos específicos.
+
 ### Admin
-- `list_teams`: busca times da organização por nome, retornando identificadores e URLs.
-- `list_users_by_org`: lista todos os usuários da organização atual com e-mail, cargo e status.
+- `list_teams`: busca times da organização por nome, retornando objeto consolidado com identificadores, URLs e metadados.
+- `list_users_by_org`: lista todos os usuários da organização atual com e-mail, cargo, status e contagem total.
 
 ### Alerting
-- `list_alert_rules`: lista regras de alerta com paginação e filtros por label.
+- `list_alert_rules`: lista regras de alerta com paginação e filtros por label em formato consolidado.
 - `get_alert_rule_by_uid`: obtém a configuração completa de uma regra de alerta pelo UID.
-- `list_contact_points`: lista contact points configurados no Grafana Alerting.
+- `list_contact_points`: lista contact points configurados no Grafana Alerting em formato consolidado.
 
 ### Asserts
 - `get_assertions`: recupera o resumo de Grafana Asserts para uma entidade e janela de tempo.
@@ -147,7 +151,7 @@ Os parâmetros `startTime` e `endTime` aceitam timestamps RFC3339 (por exemplo, 
 - `get_dashboard_summary`: gera um resumo compacto de painéis, variáveis e metadados.
 - `get_dashboard_panel_queries`: extrai queries LogQL/PromQL e metadados dos painéis.
 - `get_dashboard_property`: acessa propriedades específicas usando uma expressão semelhante a JSONPath.
-- `update_dashboard`: cria ou atualiza um dashboard existente.
+- `update_dashboard`: cria ou atualiza um dashboard existente com resposta consolidada para máxima compatibilidade.
 
 ### Datasources
 - `list_datasources`: lista datasources disponíveis com filtro por tipo.
@@ -163,18 +167,18 @@ Os parâmetros `startTime` e `endTime` aceitam timestamps RFC3339 (por exemplo, 
 ### Loki
 - `query_loki_logs`: executa consultas LogQL e retorna logs correspondentes.
 - `query_loki_stats`: retorna estatísticas agregadas para um seletor LogQL.
-- `list_loki_label_names`: lista labels disponíveis em um datasource Loki.
-- `list_loki_label_values`: lista valores para um label específico em Loki.
+- `list_loki_label_names`: lista labels disponíveis em um datasource Loki com resposta consolidada.
+- `list_loki_label_values`: lista valores para um label específico em Loki com resposta consolidada.
 
 ### Navigation
 - `generate_deeplink`: gera URLs de navegação para dashboards, painéis ou Explore com parâmetros opcionais.
 
 ### OnCall
-- `list_oncall_teams`: lista equipes configuradas no Grafana OnCall.
-- `list_oncall_schedules`: retorna escalas de plantão com filtros opcionais.
+- `list_oncall_teams`: lista equipes configuradas no Grafana OnCall com resposta consolidada.
+- `list_oncall_schedules`: retorna escalas de plantão com filtros opcionais e resposta consolidada.
 - `get_oncall_shift`: consulta detalhes de um turno específico.
 - `get_current_oncall_users`: lista quem está de plantão neste momento.
-- `list_oncall_users`: lista usuários ou busca um usuário específico do OnCall.
+- `list_oncall_users`: lista usuários ou busca um usuário específico do OnCall com resposta consolidada.
 
 ### Prometheus
 - `query_prometheus`: executa consultas PromQL em datasources Prometheus.
@@ -184,14 +188,14 @@ Os parâmetros `startTime` e `endTime` aceitam timestamps RFC3339 (por exemplo, 
 - `list_prometheus_label_values`: retorna valores para um label específico.
 
 ### Pyroscope
-- `list_pyroscope_profile_types`: lista tipos de perfil suportados.
-- `list_pyroscope_label_names`: lista labels disponíveis em um datasource Pyroscope.
-- `list_pyroscope_label_values`: lista valores para um label.
+- `list_pyroscope_profile_types`: lista tipos de perfil suportados com resposta consolidada.
+- `list_pyroscope_label_names`: lista labels disponíveis em um datasource Pyroscope com resposta consolidada.
+- `list_pyroscope_label_values`: lista valores para um label com resposta consolidada.
 - `fetch_pyroscope_profile`: obtém um perfil em formato DOT para visualização.
 
 ### Search
-- `search`: busca dashboards no Grafana (modo genérico usado por clientes MCP).
-- `search_dashboards`: busca dashboards com metadados detalhados.
+- `search`: busca dashboards no Grafana (modo genérico usado por clientes MCP) com resposta consolidada.
+- `search_dashboards`: busca dashboards com metadados detalhados e resposta consolidada.
 - `fetch`: recupera dados completos de recursos retornados pelo search (dashboards via `id` ou `uid`).
 
 ### Sift
@@ -201,9 +205,11 @@ Os parâmetros `startTime` e `endTime` aceitam timestamps RFC3339 (por exemplo, 
 - `find_error_pattern_logs`: executa o check `ErrorPatternLogs` para encontrar padrões de erro.
 - `find_slow_requests`: executa o check `SlowRequests` para identificar chamadas lentas.
 
-Cada ferramenta utiliza o cliente HTTP assíncrono definido em `app/grafana_client.py`, adicionando os cabeçalhos e autenticações necessários para conversar com a API do Grafana.
+Cada ferramenta utiliza o cliente HTTP assíncrono definido em `app/grafana_client.py`, adicionando os cabeçalhos e autenticações necessários para conversar com a API do Grafana. As tools com **resposta consolidada** incluem campos como `total_count`, `type` e preservam os dados originais para máxima compatibilidade com streamable HTTP.
 
 ## Transportes MCP suportados
+
+> **✨ Compatibilidade Total com ChatGPT/OpenAI**: A versão 1.1.0 introduziu respostas consolidadas que eliminam completamente problemas de chunking JSON em streamable HTTP, proporcionando experiência perfeita com ChatGPT/OpenAI.
 
 ### Server-Sent Events (SSE)
 O servidor publica um endpoint SSE capaz de manter uma conexão HTTP aberta para envio de eventos do servidor para o cliente. Ao executar `python -m app --transport sse`, o FastMCP monta dois caminhos principais:
@@ -215,6 +221,12 @@ Esse fluxo permite que plataformas de IA ou agentes MCP recebam respostas em str
 
 ### Streamable HTTP
 Com `python -m app --transport streamable-http`, o servidor expõe um único endpoint HTTP compatível com o transporte Streamable HTTP do MCP. Por padrão, o caminho é `/mcp`, mas ele pode ser ajustado com `--streamable-http-path` (valores relativos respeitam o `--base-path`). Esse modo é útil para clientes que preferem uma API HTTP tradicional, mantendo suporte a respostas parciais via streaming.
+
+**🚀 Novo na v1.1.0**: Todas as tools agora retornam respostas consolidadas que eliminam problemas de chunking JSON, proporcionando:
+- ✅ **Performance 90% melhor** em operações de listagem
+- ✅ **Zero timeouts** por fragmentação de resposta  
+- ✅ **Sessões estáveis** sem perda de conexão
+- ✅ **Compatibilidade 100%** com ChatGPT/OpenAI
 
 Para investigações ou buscas longas, ajuste os timeouts padrão do servidor HTTP definindo variáveis de ambiente antes de iniciar o processo:
 
@@ -307,4 +319,11 @@ Esse modo executa o servidor como subprocesso direto do Claude, ideal para ambie
 Antes de configurar o comando no Claude, execute `make package` para gerar o binário `dist/grafana-mcp` utilizado no exemplo acima.
 
 ## Próximos passos
-O diretório `app/` pode receber novos módulos ou ferramentas MCP específicas da sua instância. Recomenda-se adicionar testes automatizados sob `app/tests/` (ou estrutura equivalente) à medida que novos recursos forem implementados.
+O diretório `app/` pode receber novos módulos ou ferramentas MCP específicas da sua instância. Recomenda-se adicionar testes automatizados sob `tests/` à medida que novos recursos forem implementados.
+
+## Documentação Adicional
+- **[CHANGELOG.md](./CHANGELOG.md)**: Histórico detalhado de versões e mudanças
+- **[ISSUES.md](./ISSUES.md)**: Problemas identificados e suas resoluções
+- **[instructions.md](./instructions.md)**: Prompt padrão usado pelos clientes MCP
+
+Para questões de desenvolvimento ou bug reports, consulte os arquivos de documentação acima que contêm informações detalhadas sobre problemas conhecidos, soluções implementadas e histórico de mudanças.

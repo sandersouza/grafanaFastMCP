@@ -206,22 +206,36 @@ def register(app: FastMCP) -> None:
     @app.tool(
         name="list_loki_label_names",
         title="List Loki label names",
-        description="List the label keys available in a Loki datasource for an optional time range.",
+        description=(
+            "List the label keys available in a Loki datasource for an optional time range. "
+            "Returns a consolidated response object to prevent JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
+        ),
     )
     async def list_loki_label_names(
         datasourceUid: str,
         startRfc3339: Optional[str] = None,
         endRfc3339: Optional[str] = None,
         ctx: Optional[Context] = None,
-    ) -> List[str]:
+    ) -> Any:
         if ctx is None:
             raise ValueError("Context injection failed for list_loki_label_names")
-        return await _list_label_items(ctx, datasourceUid, "/loki/api/v1/labels", startRfc3339, endRfc3339)
+        labels = await _list_label_items(ctx, datasourceUid, "/loki/api/v1/labels", startRfc3339, endRfc3339)
+        return {
+            "labels": labels,
+            "total_count": len(labels),
+            "datasource_uid": datasourceUid,
+            "start": startRfc3339,
+            "end": endRfc3339,
+            "type": "loki_label_names_result"
+        }
 
     @app.tool(
         name="list_loki_label_values",
         title="List Loki label values",
-        description="List the values for a given label name within a Loki datasource.",
+        description=(
+            "List the values for a given label name within a Loki datasource. "
+            "Returns a consolidated response object to prevent JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
+        ),
     )
     async def list_loki_label_values(
         datasourceUid: str,
@@ -229,11 +243,20 @@ def register(app: FastMCP) -> None:
         startRfc3339: Optional[str] = None,
         endRfc3339: Optional[str] = None,
         ctx: Optional[Context] = None,
-    ) -> List[str]:
+    ) -> Any:
         if ctx is None:
             raise ValueError("Context injection failed for list_loki_label_values")
         path = f"/loki/api/v1/label/{labelName}/values"
-        return await _list_label_items(ctx, datasourceUid, path, startRfc3339, endRfc3339)
+        values = await _list_label_items(ctx, datasourceUid, path, startRfc3339, endRfc3339)
+        return {
+            "values": values,
+            "total_count": len(values),
+            "label_name": labelName,
+            "datasource_uid": datasourceUid,
+            "start": startRfc3339,
+            "end": endRfc3339,
+            "type": "loki_label_values_result"
+        }
 
     @app.tool(
         name="query_loki_logs",

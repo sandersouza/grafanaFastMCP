@@ -148,7 +148,12 @@ def test_update_dashboard_with_patches(monkeypatch: pytest.MonkeyPatch, sample_d
         captured["message"] = message
         captured["overwrite"] = overwrite
         captured["user_id"] = user_id
-        return {"status": "ok"}
+        return {
+            "status": "success",
+            "type": "dashboard_operation_result",
+            "operation": "update",
+            "grafana_response": {"status": "ok"}
+        }
 
     monkeypatch.setattr(dashboard, "_get_dashboard", fake_get)
     monkeypatch.setattr(dashboard, "_post_dashboard", fake_post)
@@ -170,7 +175,10 @@ def test_update_dashboard_with_patches(monkeypatch: pytest.MonkeyPatch, sample_d
             user_id=7,
         )
     )
-    assert result == {"status": "ok"}
+    # Test the new consolidated response structure from _post_dashboard
+    assert result["status"] == "success"
+    assert result["type"] == "dashboard_operation_result"
+    assert result["grafana_response"]["status"] == "ok"  # Original mock response
     assert captured["dashboard"]["title"] == "Updated"
     assert len(captured["dashboard"]["panels"]) == 3
     assert captured["folder"] == "folder"
@@ -197,7 +205,12 @@ def test_update_dashboard_with_structured_operations(
         captured["message"] = message
         captured["overwrite"] = overwrite
         captured["user_id"] = user_id
-        return {"status": "ok"}
+        return {
+            "status": "success",
+            "type": "dashboard_operation_result",
+            "operation": "update",
+            "grafana_response": {"status": "ok"}
+        }
 
     monkeypatch.setattr(dashboard, "_get_dashboard", fake_get)
     monkeypatch.setattr(dashboard, "_post_dashboard", fake_post)
@@ -219,7 +232,10 @@ def test_update_dashboard_with_structured_operations(
             user_id=7,
         )
     )
-    assert result == {"status": "ok"}
+    # Test the new consolidated response structure from _post_dashboard
+    assert result["status"] == "success"
+    assert result["type"] == "dashboard_operation_result"
+    assert result["grafana_response"]["status"] == "ok"  # Original mock response
     assert captured["dashboard"]["title"] == "Updated"
     assert len(captured["dashboard"]["panels"]) == 3
     assert captured["folder"] == "folder"
@@ -252,7 +268,12 @@ def test_update_dashboard_full(monkeypatch: pytest.MonkeyPatch, sample_dashboard
         captured["dashboard"] = dashboard_json
         captured["folder"] = folder
         captured["overwrite"] = overwrite
-        return {"status": "ok"}
+        return {
+            "status": "success",
+            "type": "dashboard_operation_result",
+            "operation": "update",
+            "grafana_response": {"status": "ok"}
+        }
 
     monkeypatch.setattr(dashboard, "_post_dashboard", fake_post)
     ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace()))
@@ -269,7 +290,10 @@ def test_update_dashboard_full(monkeypatch: pytest.MonkeyPatch, sample_dashboard
             user_id=None,
         )
     )
-    assert result == {"status": "ok"}
+    # Test the new consolidated response structure from _post_dashboard
+    assert result["status"] == "success"
+    assert result["type"] == "dashboard_operation_result"
+    assert result["grafana_response"]["status"] == "ok"  # Original mock response
     assert captured["folder"] == "custom"
     assert captured["overwrite"] is True
 
@@ -338,7 +362,13 @@ def test_dashboard_tool_functions_execute(dashboard_tools: tuple[Dict[str, Any],
             ctx=ctx,
         )
     )
-    assert update_result == {"status": "ok"}
+    # Test the new consolidated response structure
+    assert update_result["status"] == "success"
+    assert update_result["operation"] == "create"  # No ID means create
+    assert update_result["dashboard"]["title"] == "New"
+    assert update_result["type"] == "dashboard_operation_result"
+    assert "grafana_response" in update_result
+    assert update_result["grafana_response"]["status"] == "ok"  # Original Grafana response
 
     summary = asyncio.run(tools["get_dashboard_summary"].function(uid="abc", ctx=ctx))
     assert summary["panelCount"] == 2

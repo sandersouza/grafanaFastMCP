@@ -171,7 +171,9 @@ def register(app: FastMCP) -> None:
         name="list_alert_rules",
         title="List alert rules",
         description=(
-            "List Grafana alert rules with optional pagination and label filtering. Returns each rule's UID, title, state, and labels."
+            "List Grafana alert rules with optional pagination and label filtering. "
+            "Returns a consolidated response object containing rules metadata, total count, and pagination info. "
+            "This format prevents JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
         ),
     )
     async def list_alert_rules(
@@ -179,10 +181,18 @@ def register(app: FastMCP) -> None:
         page: Optional[int] = None,
         labelSelectors: Optional[Iterable[Dict[str, Any]]] = None,
         ctx: Optional[Context] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> Any:
         if ctx is None:
             raise ValueError("Context injection failed for list_alert_rules")
-        return await _list_alert_rules(ctx, limit, page, labelSelectors)
+        rules = await _list_alert_rules(ctx, limit, page, labelSelectors)
+        return {
+            "alert_rules": rules,
+            "total_count": len(rules),
+            "limit": limit,
+            "page": page,
+            "label_selectors": list(labelSelectors) if labelSelectors else None,
+            "type": "alert_rules_result"
+        }
 
     @app.tool(
         name="get_alert_rule_by_uid",
@@ -200,16 +210,26 @@ def register(app: FastMCP) -> None:
     @app.tool(
         name="list_contact_points",
         title="List contact points",
-        description="List Grafana notification contact points with optional name filtering.",
+        description=(
+            "List Grafana notification contact points with optional name filtering. "
+            "Returns a consolidated response object to prevent JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
+        ),
     )
     async def list_contact_points(
         limit: Optional[int] = None,
         name: Optional[str] = None,
         ctx: Optional[Context] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> Any:
         if ctx is None:
             raise ValueError("Context injection failed for list_contact_points")
-        return await _list_contact_points(ctx, limit, name)
+        contacts = await _list_contact_points(ctx, limit, name)
+        return {
+            "contact_points": contacts,
+            "total_count": len(contacts),
+            "limit": limit,
+            "name": name,
+            "type": "contact_points_result"
+        }
 
 
 __all__ = ["register"]
