@@ -25,7 +25,6 @@ Todo o código-fonte fica no diretório `app/`, deixando a raiz do repositório 
 │   ├── patches.py             # Ajustes de compatibilidade para FastMCP/transportes
 │   ├── server.py              # Fábrica do FastMCP e registro das ferramentas
 │   └── tools/                 # Coleção de ferramentas MCP (dashboards, Loki, etc.)
-├── legacy/                    # Implementação original em Go preservada para consulta
 ├── run_app.py                 # Entrypoint usado pelo PyInstaller (`make package`)
 ├── tests/                     # Testes automatizados em Python
 ├── Dockerfile                 # Imagem Docker/Podman
