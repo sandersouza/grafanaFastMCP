@@ -67,6 +67,11 @@ uv sync --dev --all-extras
 uv run -m app --address localhost:8000 --log-level INFO --transport stdio
 ```
 
+Também é possível executar via PyPI usando uvx (após a publicação):
+```bash
+uvx grafana-fastmcp --address localhost:8000 --log-level INFO --transport stdio
+```
+
 4. Comandos comuns:
 ```bash
 # Testes
