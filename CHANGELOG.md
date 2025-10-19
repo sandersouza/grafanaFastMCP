@@ -1,5 +1,11 @@
 # Changelog
 Todas as mudanças notáveis deste projeto são registradas neste arquivo. Este formato segue as recomendações do "Keep a Changelog" e o projeto adota versionamento semântico (semver).
+## [v1.2.1] - 2025-10-19
+### 🚀 Adicionado
+- Suporte a publicação no PyPI usando `uv build` e `uv publish --token {PYPI_API_TOKEN}`
+- Execução com env dinâmico usando `uvx grafana-fastmcp`, diretamente do PyPI
+- Pequenos ajustes no .toml para suporte ao endpoint de execução app:__main__:main
+- GitHUB Action workflow para publicação automatica no PyPI à partir de PR
 
 ## [v1.2.0] – 2025-10-18
 ### 🚀 Adicionado
@@ -23,6 +29,7 @@ Todas as mudanças notáveis deste projeto são registradas neste arquivo. Este 
 - Workflow PR reduzido para executar testes somente em Python 3.13 por padrão (rápido feedback para reviewers).
 - Pipeline principal (`.github/workflows/python-package.yml`) restrito para rodar em push para `main` usando Python 3.13.
 - Job condicional `build-artifacts` (PR) que constrói wheel e binário com PyInstaller quando o rótulo `build-artifacts` é aplicado.
+ - Adicionado workflow de publicação no PyPI acionado por tag `v*.*.*` (sdist + wheel). A CLI publicada expõe o comando `grafana-fastmcp` para uso com `uvx`.
 
 ### 📚 Documentação
 - `README.md` atualizado com instruções para `uv`, badges reais do repositório, explicação sobre o rótulo `build-artifacts` e nota sobre baseline Python 3.13+.
