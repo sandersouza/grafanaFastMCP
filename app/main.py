@@ -120,6 +120,12 @@ def main(argv: list[str] | None = None) -> None:
         help="Require a healthy Grafana connection at startup; abort if unreachable or auth fails",
     )
     parser.add_argument(
+        "--no-require-grafana",
+        action="store_true",
+        dest="no_require_grafana",
+        help="Disable the startup Grafana checks (opposite of --require-grafana). By default the checks are enabled.",
+    )
+    parser.add_argument(
         "--transport",
         choices=["sse", "streamable-http", "stdio"],
         default="stdio",
@@ -247,8 +253,8 @@ def main(argv: list[str] | None = None) -> None:
         exit_code = asyncio.run(_check())
         raise SystemExit(exit_code)
 
-    # If user requested the application to require Grafana on startup, perform checks
-    if getattr(args, "require_grafana", False):
+    # By default require Grafana on startup, unless explicitly disabled with --no-require-grafana
+    if getattr(args, "require_grafana", False) or not getattr(args, "no_require_grafana", False):
         config = grafana_config_from_env()
 
         async def _startup_check() -> int:
