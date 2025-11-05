@@ -122,9 +122,10 @@ TLS / SSL (novas variáveis)
  - `GRAFANA_TLS_CA_FILE`: caminho para um bundle CA para validar o servidor Grafana (opcional)
  - `GRAFANA_TLS_SKIP_VERIFY`: se `true` (ou `1`, `yes`), ignora a verificação do certificado TLS (útil para certificados auto-assinados; inseguro)
 
-Além das variáveis de ambiente, agora existem duas flags CLI úteis:
+Além das variáveis de ambiente, agora existem três flags CLI úteis:
  - `--ignore-ssl`: equivalente a definir `GRAFANA_TLS_SKIP_VERIFY=true` — faz o cliente ignorar erros de certificado.
  - `--check-connection`: executa uma verificação simples (`/api/health`) contra a instância Grafana e encerra com código 0 em sucesso ou 2 em falha. Útil para CI ou troubleshooting pré-execução.
+ - `--require-grafana`: quando fornecida, a aplicação executa um conjunto de checagens na inicialização — reachability/TLS via `/api/health`, validação de identidade do servidor, e verificação de autenticação via `/api/user` — e aborta o startup se algum passo falhar.
 
 ## Execução
 Após configurar o ambiente, execute o servidor MCP com:

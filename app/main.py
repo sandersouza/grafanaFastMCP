@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import asyncio
 from pathlib import Path
 import sys
 from typing import Tuple
@@ -20,8 +21,14 @@ from .config import (
     GRAFANA_SERVICE_ACCOUNT_ENV,
     GRAFANA_URL_ENV,
     GRAFANA_USERNAME_ENV,
+    GRAFANA_TLS_SKIP_VERIFY_ENV,
+    GRAFANA_TLS_CERT_FILE_ENV,
+    GRAFANA_TLS_KEY_FILE_ENV,
+    GRAFANA_TLS_CA_FILE_ENV,
 )
 from .server import create_app
+from .config import grafana_config_from_env
+from .grafana_client import GrafanaClient
 
 
 def _request_shutdown(app: object, transport: str) -> None:
@@ -98,6 +105,21 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Print version and exit")
     parser.add_argument(
+        "--ignore-ssl",
+        action="store_true",
+        help="Ignore TLS/SSL certificate errors when connecting to Grafana (sets GRAFANA_TLS_SKIP_VERIFY)",
+    )
+    parser.add_argument(
+        "--check-connection",
+        action="store_true",
+        help="Check Grafana connection and exit (verifies reachability and auth)",
+    )
+    parser.add_argument(
+        "--require-grafana",
+        action="store_true",
+        help="Require a healthy Grafana connection at startup; abort if unreachable or auth fails",
+    )
+    parser.add_argument(
         "--transport",
         choices=["sse", "streamable-http", "stdio"],
         default="stdio",
@@ -118,6 +140,13 @@ def main(argv: list[str] | None = None) -> None:
         GRAFANA_ACCESS_TOKEN_ENV: ("grafana_access_token", "Grafana access token"),
         GRAFANA_ID_TOKEN_ENV: ("grafana_id_token", "Grafana ID token"),
     }
+    # Add TLS-related environment variables as CLI-overridable flags
+    env_arguments.update({
+        GRAFANA_TLS_SKIP_VERIFY_ENV: ("grafana_tls_skip_verify", "Skip TLS certificate verification (true/false)"),
+        GRAFANA_TLS_CERT_FILE_ENV: ("grafana_tls_cert_file", "Client certificate file path"),
+        GRAFANA_TLS_KEY_FILE_ENV: ("grafana_tls_key_file", "Client certificate key file path"),
+        GRAFANA_TLS_CA_FILE_ENV: ("grafana_tls_ca_file", "CA bundle file path for Grafana"),
+    })
 
     for env_name, (dest, description) in env_arguments.items():
         parser.add_argument(
@@ -178,6 +207,10 @@ def main(argv: list[str] | None = None) -> None:
 
     args = parser.parse_args(argv)
 
+    # If user passed --ignore-ssl, set env var so grafana_config_from_env picks it up
+    if getattr(args, "ignore_ssl", False):
+        os.environ[GRAFANA_TLS_SKIP_VERIFY_ENV] = "true"
+
     argv_list = list(argv) if argv is not None else []
     transport_overridden = any(arg.startswith("--transport")
                                for arg in argv_list)
@@ -193,6 +226,68 @@ def main(argv: list[str] | None = None) -> None:
         value = getattr(args, dest, None)
         if value is not None:
             os.environ[env_name] = value
+
+    # If user asked for a connection check, perform it and exit early
+    if getattr(args, "check_connection", False):
+        # Build config from current environment
+        config = grafana_config_from_env()
+
+        async def _check() -> int:
+            client = GrafanaClient(config)
+            try:
+                # Prefer the Grafana health endpoint
+                await client.get_json("/api/health")
+                print("Grafana connection: OK")
+                return 0
+            except Exception as exc:  # pragma: no cover - surface failures to caller
+                logging.getLogger(__name__).error("Grafana connection check failed", exc_info=exc)
+                print(f"Grafana connection: FAILED - {exc}")
+                return 2
+
+        exit_code = asyncio.run(_check())
+        raise SystemExit(exit_code)
+
+    # If user requested the application to require Grafana on startup, perform checks
+    if getattr(args, "require_grafana", False):
+        config = grafana_config_from_env()
+
+        async def _startup_check() -> int:
+            client = GrafanaClient(config)
+            logger = logging.getLogger(__name__)
+            try:
+                # Reachability and TLS/SSL validation via /api/health
+                resp = await client.get_json("/api/health")
+            except Exception as exc:
+                logger.error("Grafana reachability or TLS validation failed", exc_info=exc)
+                print(f"Grafana startup check: FAILED (reachability/TLS) - {exc}")
+                return 2
+
+            # Basic check that this looks like Grafana
+            if not isinstance(resp, dict) or ("database" not in resp and "version" not in resp):
+                logger.error("Grafana health endpoint returned unexpected payload: %r", resp)
+                print("Grafana startup check: FAILED (not a Grafana instance)")
+                return 2
+
+            # Authentication check: require that some form of auth is configured
+            if not (config.api_key or config.basic_auth or (config.access_token and config.id_token)):
+                logger.error("No Grafana authentication configured (api key, service account token or basic auth)")
+                print("Grafana startup check: FAILED (no authentication configured)")
+                return 2
+
+            # Try an authenticated endpoint (/api/user)
+            try:
+                await client.get_json("/api/user")
+            except Exception as exc:
+                logger.error("Grafana authentication failed", exc_info=exc)
+                print(f"Grafana startup check: FAILED (auth) - {exc}")
+                return 2
+
+            print("Grafana startup check: OK")
+            return 0
+
+        code = asyncio.run(_startup_check())
+        if code != 0:
+            raise SystemExit(code)
 
     host, port = _parse_address(args.address)
     log_level_name = args.log_level.upper()
