@@ -12,7 +12,8 @@ from ..grafana_client import GrafanaAPIError, GrafanaClient
 from ._label_matching import LabelMatcher, Selector, matches_all
 
 
-def _parse_label_matchers(raw_filters: Iterable[Dict[str, Any]]) -> List[LabelMatcher]:
+def _parse_label_matchers(
+        raw_filters: Iterable[Dict[str, Any]]) -> List[LabelMatcher]:
     matchers: List[LabelMatcher] = []
     for filt in raw_filters:
         if not isinstance(filt, dict):
@@ -30,7 +31,8 @@ def _parse_label_matchers(raw_filters: Iterable[Dict[str, Any]]) -> List[LabelMa
     return matchers
 
 
-def _parse_label_selectors(raw: Optional[Iterable[Dict[str, Any]]]) -> List[Selector]:
+def _parse_label_selectors(
+        raw: Optional[Iterable[Dict[str, Any]]]) -> List[Selector]:
     selectors: List[Selector] = []
     if not raw:
         return selectors
@@ -86,7 +88,8 @@ def _filter_rules_by_selectors(
         return rules
     filtered: List[Dict[str, Any]] = []
     for rule in rules:
-        labels = rule.get("labels") if isinstance(rule.get("labels"), dict) else {}
+        labels = rule.get("labels") if isinstance(
+            rule.get("labels"), dict) else {}
         if matches_all(selectors, labels):
             filtered.append(rule)
     return filtered
@@ -168,14 +171,10 @@ def register(app: FastMCP) -> None:
     """Register alerting tools with the FastMCP application."""
 
     @app.tool(
-        name="list_alert_rules",
-        title="List alert rules",
-        description=(
+        name="list_alert_rules", title="List alert rules", description=(
             "List Grafana alert rules with optional pagination and label filtering. "
             "Returns a consolidated response object containing rules metadata, total count, and pagination info. "
-            "This format prevents JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
-        ),
-    )
+            "This format prevents JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."), )
     async def list_alert_rules(
         limit: Optional[int] = None,
         page: Optional[int] = None,
@@ -191,8 +190,7 @@ def register(app: FastMCP) -> None:
             "limit": limit,
             "page": page,
             "label_selectors": list(labelSelectors) if labelSelectors else None,
-            "type": "alert_rules_result"
-        }
+            "type": "alert_rules_result"}
 
     @app.tool(
         name="get_alert_rule_by_uid",
@@ -204,7 +202,8 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> Any:
         if ctx is None:
-            raise ValueError("Context injection failed for get_alert_rule_by_uid")
+            raise ValueError(
+                "Context injection failed for get_alert_rule_by_uid")
         return await _get_alert_rule(ctx, uid)
 
     @app.tool(
@@ -221,7 +220,8 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> Any:
         if ctx is None:
-            raise ValueError("Context injection failed for list_contact_points")
+            raise ValueError(
+                "Context injection failed for list_contact_points")
         contacts = await _list_contact_points(ctx, limit, name)
         return {
             "contact_points": contacts,
@@ -233,4 +233,3 @@ def register(app: FastMCP) -> None:
 
 
 __all__ = ["register"]
-

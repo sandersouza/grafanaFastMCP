@@ -55,7 +55,8 @@ def test_fetch_tool_metadata() -> None:
     tools = asyncio.run(app.list_tools())
     tool = next((tool for tool in tools if tool.name == "fetch"), None)
     assert tool is not None
-    assert "Retrieve detailed Grafana resource data" in (tool.description or "")
+    assert "Retrieve detailed Grafana resource data" in (
+        tool.description or "")
 
 
 def test_search_and_dashboards_tools_require_only_query() -> None:
@@ -106,7 +107,8 @@ def test_fetch_schema_defines_array_items_for_ids() -> None:
     if "anyOf" in items_schema:
         any_of = items_schema["anyOf"]
         assert isinstance(any_of, list) and any_of, items_schema
-        item_types = {entry.get("type") for entry in any_of if isinstance(entry, dict)}
+        item_types = {entry.get("type")
+                      for entry in any_of if isinstance(entry, dict)}
     else:
         item_types = {items_schema.get("type")}
 
@@ -118,7 +120,8 @@ def test_parse_dashboard_url_handles_relative_and_absolute_paths() -> None:
     assert uid == "abc123"
     assert numeric is None
 
-    uid, numeric = _parse_dashboard_url("https://grafana.example.com/d-solo/xyz/view")
+    uid, numeric = _parse_dashboard_url(
+        "https://grafana.example.com/d-solo/xyz/view")
     assert uid == "xyz"
     assert numeric is None
 
@@ -164,7 +167,11 @@ class DummyClient:
     def __init__(self) -> None:
         self.paths: list[str] = []
 
-    async def get_json(self, path: str, params: dict[str, object] | None = None) -> dict[str, str]:
+    async def get_json(self,
+                       path: str,
+                       params: dict[str,
+                                    object] | None = None) -> dict[str,
+                                                                   str]:
         self.paths.append(path)
         return {"path": path}
 
@@ -172,7 +179,11 @@ class DummyClient:
 def test_fetch_dashboard_prefers_uid() -> None:
     client = DummyClient()
 
-    result = asyncio.run(_fetch_dashboard(client, uid="abc123", numeric_id=None))
+    result = asyncio.run(
+        _fetch_dashboard(
+            client,
+            uid="abc123",
+            numeric_id=None))
 
     assert result == {"path": "/dashboards/uid/abc123"}
     assert client.paths == ["/dashboards/uid/abc123"]

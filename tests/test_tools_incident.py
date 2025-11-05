@@ -18,41 +18,59 @@ class DummyClient:
         self.calls: list[tuple[str, Dict[str, Any]]] = []
         self.response: Dict[str, Any] = {"ok": True}
 
-    async def post_json(self, path: str, json: Dict[str, Any]) -> Dict[str, Any]:
+    async def post_json(
+            self, path: str, json: Dict[str, Any]) -> Dict[str, Any]:
         self.calls.append((path, json))
         return self.response
 
 
 @pytest.fixture
-def ctx(monkeypatch: pytest.MonkeyPatch) -> tuple[SimpleNamespace, DummyClient]:
+def ctx(
+        monkeypatch: pytest.MonkeyPatch) -> tuple[SimpleNamespace, DummyClient]:
     config = SimpleNamespace(url="https://grafana.local")
     client = DummyClient()
     monkeypatch.setattr(incident, "get_grafana_config", lambda _: config)
     monkeypatch.setattr(incident, "GrafanaClient", lambda cfg: client)
-    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace(), request=None))
+    ctx = SimpleNamespace(
+        request_context=SimpleNamespace(
+            session=SimpleNamespace(),
+            request=None))
     return ctx, client
 
 
 def test_build_query_string_handles_flags() -> None:
     assert incident._build_query_string(False, None) == "isdrill:false"
     assert incident._build_query_string(True, "open") == "status:open"
-    assert incident._build_query_string(False, "closed") == "isdrill:false status:closed"
+    assert incident._build_query_string(
+        False, "closed") == "isdrill:false status:closed"
 
 
-def test_list_incidents_builds_payload(ctx: tuple[SimpleNamespace, DummyClient]) -> None:
+def test_list_incidents_builds_payload(
+        ctx: tuple[SimpleNamespace, DummyClient]) -> None:
     ctx_obj, client = ctx
-    result = asyncio.run(incident._list_incidents(ctx_obj, limit=5, include_drill=False, status="open"))
+    result = asyncio.run(
+        incident._list_incidents(
+            ctx_obj,
+            limit=5,
+            include_drill=False,
+            status="open"))
     assert result == {"ok": True}
     path, payload = client.calls[0]
     assert path.endswith("QueryIncidentPreviews")
     assert payload["query"]["limit"] == 5
     assert "status:open" in payload["query"]["queryString"]
 
-    asyncio.run(incident._list_incidents(ctx_obj, limit=-1, include_drill=True, status=None))
+    asyncio.run(
+        incident._list_incidents(
+            ctx_obj,
+            limit=-1,
+            include_drill=True,
+            status=None))
     assert client.calls[-1][1]["query"]["limit"] == 10
 
 
-def test_create_incident_and_add_activity(ctx: tuple[SimpleNamespace, DummyClient]) -> None:
+def test_create_incident_and_add_activity(
+        ctx: tuple[SimpleNamespace, DummyClient]) -> None:
     ctx_obj, client = ctx
     asyncio.run(
         incident._create_incident(
@@ -82,7 +100,8 @@ def test_create_incident_and_add_activity(ctx: tuple[SimpleNamespace, DummyClien
     ]
 
 
-def test_get_incident_handles_errors(monkeypatch: pytest.MonkeyPatch, ctx: tuple[SimpleNamespace, DummyClient]) -> None:
+def test_get_incident_handles_errors(
+        monkeypatch: pytest.MonkeyPatch, ctx: tuple[SimpleNamespace, DummyClient]) -> None:
     ctx_obj, client = ctx
     asyncio.run(incident._get_incident(ctx_obj, "42"))
     path, payload = client.calls[-1]

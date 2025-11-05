@@ -116,6 +116,18 @@ A aplicação lê os parâmetros de conexão a partir de variáveis de ambiente,
 
 Defina as variáveis conforme o método de autenticação que estiver usando. Também é possível fornecer certificados TLS personalizados por meio da estrutura `TLSConfig` definida no módulo de configuração.
 
+TLS / SSL (novas variáveis)
+ - `GRAFANA_TLS_CERT_FILE`: caminho para certificado cliente (opcional)
+ - `GRAFANA_TLS_KEY_FILE`: caminho para chave do certificado (opcional)
+ - `GRAFANA_TLS_CA_FILE`: caminho para um bundle CA para validar o servidor Grafana (opcional)
+ - `GRAFANA_TLS_SKIP_VERIFY`: se `true` (ou `1`, `yes`), ignora a verificação do certificado TLS (útil para certificados auto-assinados; inseguro)
+
+Além das variáveis de ambiente, agora existem três flags CLI úteis:
+ - `--ignore-ssl`: equivalente a definir `GRAFANA_TLS_SKIP_VERIFY=true` — faz o cliente ignorar erros de certificado.
+ - `--check-connection`: executa uma verificação simples (`/api/health`) contra a instância Grafana e encerra com código 0 em sucesso ou 2 em falha. Útil para CI ou troubleshooting pré-execução.
+ - `--require-grafana`: quando fornecida, a aplicação executa um conjunto de checagens na inicialização — reachability/TLS via `/api/health`, validação de identidade do servidor, e verificação de autenticação via `/api/user` — e aborta o startup se algum passo falhar.
+ - `--require-grafana` (enabled by default): a aplicação executará um conjunto de checagens na inicialização (reachability/TLS via `/api/health`, validação de identidade do servidor, e verificação de autenticação via `/api/user`) e abortará a inicialização se alguma checagem falhar. Para desativar esse comportamento padrão, passe `--no-require-grafana`.
+
 ## Execução
 Após configurar o ambiente, execute o servidor MCP com:
 
@@ -136,6 +148,7 @@ Parâmetros úteis:
 - `--log-level`: nível de log (`DEBUG`, `INFO`, `WARNING`, etc.).
 - `--debug`: ativa modo de depuração do FastMCP.
 - `--version`: imprime a versão da aplicação e encerra.
+ - `--version`: imprime a versão da aplicação e encerra.
 - `--env-file`: caminho para um arquivo `.env` adicional a ser carregado antes da inicialização.
 
 O servidor registra automaticamente todas as ferramentas MCP descritas em `app/tools/` através da função `register_all`. Agentes MCP podem consumir as capacidades para listar datasources, atualizar dashboards, executar consultas no Loki e gerar links de navegação no Grafana, entre outras.

@@ -16,7 +16,10 @@ class DummyGrafanaClient:
         self.config = config
         self.calls: list[str] = []
 
-    async def get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
+    async def get_json(self,
+                       path: str,
+                       params: dict[str,
+                                    Any] | None = None) -> Any:
         self.calls.append(path)
         if path == "/datasources":
             return [
@@ -34,7 +37,8 @@ class DummyGrafanaClient:
         raise AssertionError(f"Unexpected path requested: {path}")
 
 
-def test_detect_capabilities_normalizes_values(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_detect_capabilities_normalizes_values(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(availability, "GrafanaClient", DummyGrafanaClient)
 
     config = GrafanaConfig(url="https://grafana.example.com")
@@ -49,14 +53,17 @@ def test_detect_capabilities_normalizes_values(monkeypatch: pytest.MonkeyPatch) 
     assert not capabilities.has_plugin("grafana-asserts-app")
 
 
-def test_detect_capabilities_handles_event_loop(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_detect_capabilities_handles_event_loop(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
     collected = False
 
-    async def fake_collect(config: GrafanaConfig) -> availability.GrafanaCapabilities:
+    async def fake_collect(
+            config: GrafanaConfig) -> availability.GrafanaCapabilities:
         nonlocal collected
         collected = True
-        return availability.GrafanaCapabilities(plugin_ids=frozenset({"fallback"}))
+        return availability.GrafanaCapabilities(
+            plugin_ids=frozenset({"fallback"}))
 
     monkeypatch.setattr(availability, "_collect_capabilities", fake_collect)
 
@@ -66,15 +73,19 @@ def test_detect_capabilities_handles_event_loop(monkeypatch: pytest.MonkeyPatch)
     def fake_run(coro: object) -> availability.GrafanaCapabilities:
         if hasattr(coro, "close"):
             coro.close()  # type: ignore[attr-defined]
-        raise RuntimeError("asyncio.run() cannot be called from a running event loop")
+        raise RuntimeError(
+            "asyncio.run() cannot be called from a running event loop")
 
     class DummyLoop:
-        def run_until_complete(self, coro: object) -> availability.GrafanaCapabilities:
+        def run_until_complete(
+                self,
+                coro: object) -> availability.GrafanaCapabilities:
             calls.append("loop_run")
             temp_loop = real_new_loop()
             try:
                 asyncio.set_event_loop(temp_loop)
-                return temp_loop.run_until_complete(coro)  # type: ignore[arg-type]
+                return temp_loop.run_until_complete(
+                    coro)  # type: ignore[arg-type]
             finally:
                 asyncio.set_event_loop(None)
                 temp_loop.close()
@@ -93,7 +104,8 @@ def test_detect_capabilities_handles_event_loop(monkeypatch: pytest.MonkeyPatch)
     assert calls == ["loop_run", "loop_close"]
 
 
-def test_detect_capabilities_handles_runtime_error(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_detect_capabilities_handles_runtime_error(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_run(coro: object) -> availability.GrafanaCapabilities:
         if hasattr(coro, "close"):
             coro.close()  # type: ignore[attr-defined]
@@ -123,62 +135,84 @@ def test_normalize_items_handles_mixed_values() -> None:
     assert normalized == frozenset({"loki", "prometheus", "123"})
 
 
-@pytest.mark.parametrize(
-    "payload, expected",
-    [
-        ([{"type": "Loki"}, {"type": "  prometheus  "}, {"type": None}, "ignored"], {"loki", "prometheus"}),
-        ({"datasources": [{"type": "Tempo"}]}, {"tempo"}),
-        ({"items": [{"type": "Zipkin"}]}, {"zipkin"}),
-        ({"unexpected": True}, set()),
-        ("not-iterable", set()),
-    ],
-)
-def test_fetch_datasource_types_parses_payloads(payload: Any, expected: set[str]) -> None:
+@pytest.mark.parametrize("payload, expected",
+                         [([{"type": "Loki"},
+                            {"type": "  prometheus  "},
+                             {"type": None},
+                             "ignored"],
+                             {"loki",
+                              "prometheus"}),
+                             ({"datasources": [{"type": "Tempo"}]},
+                              {"tempo"}),
+                             ({"items": [{"type": "Zipkin"}]},
+                              {"zipkin"}),
+                             ({"unexpected": True},
+                              set()),
+                             ("not-iterable",
+                              set()),
+                          ],
+                         )
+def test_fetch_datasource_types_parses_payloads(
+        payload: Any, expected: set[str]) -> None:
     class PayloadClient:
         def __init__(self, value: Any) -> None:
             self.value = value
 
-        async def get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        async def get_json(
+                self, path: str, params: dict[str, Any] | None = None) -> Any:
             assert path == "/datasources"
             return self.value
 
     client = PayloadClient(payload)
-    result = asyncio.run(availability._fetch_datasource_types(client))  # type: ignore[arg-type]
+    result = asyncio.run(availability._fetch_datasource_types(
+        client))  # type: ignore[arg-type]
     assert result == expected
 
 
-@pytest.mark.parametrize(
-    "payload, expected",
-    [
-        ([{"id": "grafana-ml-app"}, {"id": " Grafana-IRM-App "}, {"id": None}, 123], {"grafana-ml-app", "grafana-irm-app"}),
-        ({"items": [{"id": "grafana-asserts-app"}]}, {"grafana-asserts-app"}),
-        ({"plugins": [{"id": "grafana-pyroscope-app"}]}, {"grafana-pyroscope-app"}),
-        ({"unexpected": True}, set()),
-        (123, set()),
-    ],
-)
-def test_fetch_plugin_ids_parses_payloads(payload: Any, expected: set[str]) -> None:
+@pytest.mark.parametrize("payload, expected",
+                         [([{"id": "grafana-ml-app"},
+                            {"id": " Grafana-IRM-App "},
+                             {"id": None},
+                             123],
+                             {"grafana-ml-app",
+                              "grafana-irm-app"}),
+                             ({"items": [{"id": "grafana-asserts-app"}]},
+                              {"grafana-asserts-app"}),
+                             ({"plugins": [{"id": "grafana-pyroscope-app"}]},
+                              {"grafana-pyroscope-app"}),
+                             ({"unexpected": True},
+                              set()),
+                             (123,
+                              set()),
+                          ],
+                         )
+def test_fetch_plugin_ids_parses_payloads(
+        payload: Any, expected: set[str]) -> None:
     class PayloadClient:
         def __init__(self, value: Any) -> None:
             self.value = value
 
-        async def get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        async def get_json(
+                self, path: str, params: dict[str, Any] | None = None) -> Any:
             assert path == "/plugins"
             return self.value
 
     client = PayloadClient(payload)
-    result = asyncio.run(availability._fetch_plugin_ids(client))  # type: ignore[arg-type]
+    result = asyncio.run(availability._fetch_plugin_ids(
+        client))  # type: ignore[arg-type]
     assert result == expected
 
 
-def test_collect_capabilities_uses_grafana_client(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_collect_capabilities_uses_grafana_client(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[str] = []
 
     class DummyClient:
         def __init__(self, config: GrafanaConfig) -> None:
             self.config = config
 
-        async def get_json(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        async def get_json(
+                self, path: str, params: dict[str, Any] | None = None) -> Any:
             calls.append(path)
             if path == "/datasources":
                 return [{"type": "Loki"}]

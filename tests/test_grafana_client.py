@@ -9,7 +9,13 @@ from app.config import GrafanaConfig, TLSConfig
 
 
 class DummyResponse:
-    def __init__(self, *, status_code: int = 200, text: str = "", headers: dict[str, str] | None = None, json_data: object = None) -> None:
+    def __init__(self,
+                 *,
+                 status_code: int = 200,
+                 text: str = "",
+                 headers: dict[str,
+                               str] | None = None,
+                 json_data: object = None) -> None:
         self.status_code = status_code
         self.text = text
         self.headers = headers or {}
@@ -45,7 +51,8 @@ def test_client_initialization_configures_tls() -> None:
 
     assert client._verify == "ca.pem"
     assert client._cert == ("cert.pem", "key.pem")
-    assert client._absolute_url("alerts") == "https://grafana.example/sub/api/alerts"
+    assert client._absolute_url(
+        "alerts") == "https://grafana.example/sub/api/alerts"
 
 
 def test_client_headers_include_tokens() -> None:
@@ -62,7 +69,8 @@ def test_client_headers_include_tokens() -> None:
     assert headers["X-Access-Token"] == "access"
     assert headers["X-Grafana-Id"] == "id"
     assert headers["X-Test"] == "value"
-    assert headers["User-Agent"].startswith(grafana_client.USER_AGENT.split("/")[0])
+    assert headers["User-Agent"].startswith(
+        grafana_client.USER_AGENT.split("/")[0])
 
 
 def test_client_auth_uses_basic_auth(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -74,7 +82,11 @@ def test_client_auth_uses_basic_auth(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(grafana_client.httpx, "BasicAuth", FakeBasicAuth)
 
-    config = GrafanaConfig(url="https://grafana.example", basic_auth=("user", "pass"))
+    config = GrafanaConfig(
+        url="https://grafana.example",
+        basic_auth=(
+            "user",
+            "pass"))
     client = grafana_client.GrafanaClient(config)
     auth = client._auth()
 
@@ -83,7 +95,8 @@ def test_client_auth_uses_basic_auth(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.anyio("asyncio")
-async def test_request_invokes_httpx_client(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_request_invokes_httpx_client(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     tls = TLSConfig(cert_file="cert.pem", key_file="key.pem", ca_file="ca.pem")
     config = GrafanaConfig(
         url="https://grafana.example/base",
@@ -99,7 +112,13 @@ async def test_request_invokes_httpx_client(monkeypatch: pytest.MonkeyPatch) -> 
     response = DummyResponse(json_data={"ok": True})
 
     class DummyAsyncClient:
-        def __init__(self, *, timeout: object, verify: object, cert: object, auth: object) -> None:
+        def __init__(
+                self,
+                *,
+                timeout: object,
+                verify: object,
+                cert: object,
+                auth: object) -> None:
             captured["init"] = {
                 "timeout": timeout,
                 "verify": verify,
@@ -114,7 +133,14 @@ async def test_request_invokes_httpx_client(monkeypatch: pytest.MonkeyPatch) -> 
         async def __aexit__(self, exc_type, exc, tb) -> None:
             captured["exit"] = True
 
-        async def request(self, method: str, url: str, *, params: object = None, json: object = None, headers: dict[str, str] | None = None) -> DummyResponse:
+        async def request(self,
+                          method: str,
+                          url: str,
+                          *,
+                          params: object = None,
+                          json: object = None,
+                          headers: dict[str,
+                                        str] | None = None) -> DummyResponse:
             captured["request"] = {
                 "method": method,
                 "url": url,
@@ -137,8 +163,10 @@ async def test_request_invokes_httpx_client(monkeypatch: pytest.MonkeyPatch) -> 
 
 
 @pytest.mark.anyio("asyncio")
-async def test_request_raises_on_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    client = grafana_client.GrafanaClient(GrafanaConfig(url="https://grafana.example"))
+async def test_request_raises_on_error(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    client = grafana_client.GrafanaClient(
+        GrafanaConfig(url="https://grafana.example"))
     error_response = DummyResponse(status_code=500, text="boom")
 
     class DummyAsyncClient:
@@ -164,11 +192,16 @@ async def test_request_raises_on_error(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.anyio("asyncio")
-async def test_post_json_handles_text_response(monkeypatch: pytest.MonkeyPatch) -> None:
-    client = grafana_client.GrafanaClient(GrafanaConfig(url="https://grafana.example"))
+async def test_post_json_handles_text_response(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    client = grafana_client.GrafanaClient(
+        GrafanaConfig(url="https://grafana.example"))
 
     async def fake_request(self: grafana_client.GrafanaClient, *_: object, **__: object) -> DummyResponse:  # pragma: no cover - helper
-        return DummyResponse(headers={"content-type": "text/plain"}, text="plain")
+        return DummyResponse(
+            headers={
+                "content-type": "text/plain"},
+            text="plain")
 
     monkeypatch.setattr(grafana_client.GrafanaClient, "request", fake_request)
 
@@ -177,11 +210,17 @@ async def test_post_json_handles_text_response(monkeypatch: pytest.MonkeyPatch) 
 
 
 @pytest.mark.anyio("asyncio")
-async def test_post_json_returns_parsed_body(monkeypatch: pytest.MonkeyPatch) -> None:
-    client = grafana_client.GrafanaClient(GrafanaConfig(url="https://grafana.example"))
+async def test_post_json_returns_parsed_body(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    client = grafana_client.GrafanaClient(
+        GrafanaConfig(url="https://grafana.example"))
 
     async def fake_request(self: grafana_client.GrafanaClient, *_: object, **__: object) -> DummyResponse:  # pragma: no cover - helper
-        return DummyResponse(headers={"content-type": "application/json"}, json_data={"ok": True})
+        return DummyResponse(
+            headers={
+                "content-type": "application/json"},
+            json_data={
+                "ok": True})
 
     monkeypatch.setattr(grafana_client.GrafanaClient, "request", fake_request)
 
@@ -190,8 +229,10 @@ async def test_post_json_returns_parsed_body(monkeypatch: pytest.MonkeyPatch) ->
 
 
 @pytest.mark.anyio("asyncio")
-async def test_get_json_returns_parsed_body(monkeypatch: pytest.MonkeyPatch) -> None:
-    client = grafana_client.GrafanaClient(GrafanaConfig(url="https://grafana.example"))
+async def test_get_json_returns_parsed_body(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    client = grafana_client.GrafanaClient(
+        GrafanaConfig(url="https://grafana.example"))
 
     async def fake_request(self: grafana_client.GrafanaClient, *_: object, **__: object) -> DummyResponse:  # pragma: no cover - helper
         return DummyResponse(json_data={"value": 1})

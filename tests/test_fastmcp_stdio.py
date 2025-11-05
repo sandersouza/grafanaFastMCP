@@ -40,7 +40,8 @@ def test_stdio_list_tools_returns_registered_tool() -> None:
     app = FastMCP(name="mcp-grafana", instructions=None)
 
     @app.tool(name="echo", title="Echo", description="Echoes input")
-    async def echo(message: str, ctx: Optional[Context] = None) -> Dict[str, str]:
+    async def echo(
+            message: str, ctx: Optional[Context] = None) -> Dict[str, str]:
         return {"message": message}
 
     handler = _STDIOHandler(app)
@@ -87,7 +88,8 @@ def test_stdio_call_tool_invokes_async_function() -> None:
     app = FastMCP(name="mcp-grafana", instructions=None)
 
     @app.tool(name="uppercase", title="Upper", description="Uppercase text")
-    async def uppercase(value: str, ctx: Optional[Context] = None) -> Dict[str, str]:
+    async def uppercase(
+            value: str, ctx: Optional[Context] = None) -> Dict[str, str]:
         return {"result": value.upper()}
 
     handler = _STDIOHandler(app)
@@ -103,7 +105,8 @@ def test_stdio_call_tool_invokes_async_function() -> None:
     result = response["result"]
     assert result["isError"] is False
     assert result["structuredContent"] == {"result": "GRAFANA"}
-    assert any(block["text"].find("GRAFANA") >= 0 for block in result["content"])
+    assert any(block["text"].find("GRAFANA") >=
+               0 for block in result["content"])
 
 
 def test_stdio_call_tool_missing_argument_raises_error() -> None:

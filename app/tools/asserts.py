@@ -12,7 +12,9 @@ from ..context import get_grafana_config
 from ..grafana_client import GrafanaClient
 
 
-_RELATIVE_TIME_PATTERN = re.compile(r"^now(?:(?P<sign>[+-])(?P<value>\d+)(?P<unit>[smhdw]))*$", re.IGNORECASE)
+_RELATIVE_TIME_PATTERN = re.compile(
+    r"^now(?:(?P<sign>[+-])(?P<value>\d+)(?P<unit>[smhdw]))*$",
+    re.IGNORECASE)
 
 
 _RELATIVE_UNIT_TO_DELTA = {
@@ -31,12 +33,14 @@ def _parse_relative_time(expression: str) -> datetime | None:
 
     current = datetime.now(timezone.utc)
     # Extract segments after the leading "now"
-    for segment in re.finditer(r"([+-])(\d+)([smhdw])", expression[3:], re.IGNORECASE):
+    for segment in re.finditer(
+            r"([+-])(\d+)([smhdw])", expression[3:], re.IGNORECASE):
         sign, value_str, unit = segment.groups()
         amount = int(value_str)
         delta_factory = _RELATIVE_UNIT_TO_DELTA.get(unit.lower())
         if delta_factory is None:
-            raise ValueError(f"Unsupported relative time unit '{unit}' in expression '{expression}'")
+            raise ValueError(
+                f"Unsupported relative time unit '{unit}' in expression '{expression}'")
         delta = delta_factory(amount)
         if sign == "+":
             current += delta
@@ -60,11 +64,13 @@ def _parse_time(value: Any, field_name: str) -> int:
         try:
             dt = datetime.fromisoformat(cleaned)
         except ValueError as exc:
-            raise ValueError(f"Invalid RFC3339 timestamp for {field_name}: {value}") from exc
+            raise ValueError(
+                f"Invalid RFC3339 timestamp for {field_name}: {value}") from exc
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return int(dt.timestamp() * 1000)
-    raise ValueError(f"Unsupported timestamp type for {field_name}: {type(value)!r}")
+    raise ValueError(
+        f"Unsupported timestamp type for {field_name}: {type(value)!r}")
 
 
 async def _get_assertions(ctx: Context, args: Dict[str, Any]) -> str:
@@ -85,19 +91,19 @@ async def _get_assertions(ctx: Context, args: Dict[str, Any]) -> str:
         if isinstance(value, str) and value:
             scope[key] = value
 
-    request_body = {
-        "startTime": start_ms,
-        "endTime": end_ms,
-        "entityKeys": [
-            {
-                "name": entity_name,
-                "type": entity_type,
-                "scope": scope,
-            }
-        ],
-        "suggestionSrcEntities": [],
-        "alertCategories": ["saturation", "amend", "anomaly", "failure", "error"],
-    }
+    request_body = {"startTime": start_ms,
+                    "endTime": end_ms,
+                    "entityKeys": [{"name": entity_name,
+                                    "type": entity_type,
+                                    "scope": scope,
+                                    }],
+                    "suggestionSrcEntities": [],
+                    "alertCategories": ["saturation",
+                                        "amend",
+                                        "anomaly",
+                                        "failure",
+                                        "error"],
+                    }
 
     path = "/plugins/grafana-asserts-app/resources/asserts/api-server/v1/assertions/llm-summary"
     response = await client.post_json(path, json=request_body)

@@ -39,7 +39,10 @@ def ctx(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     }
     monkeypatch.setattr(oncall, "get_grafana_config", lambda _: config)
     monkeypatch.setattr(oncall, "GrafanaClient", lambda cfg: client)
-    return SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace(), request=None))
+    return SimpleNamespace(
+        request_context=SimpleNamespace(
+            session=SimpleNamespace(),
+            request=None))
 
 
 def test_fetch_oncall_base_url_appends_default(ctx: SimpleNamespace) -> None:
@@ -47,7 +50,9 @@ def test_fetch_oncall_base_url_appends_default(ctx: SimpleNamespace) -> None:
     assert base == "https://oncall.example.com/api/v1/"
 
 
-def test_fetch_oncall_base_url_validates_json(ctx: SimpleNamespace, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fetch_oncall_base_url_validates_json(
+        ctx: SimpleNamespace,
+        monkeypatch: pytest.MonkeyPatch) -> None:
     bad_client = DummyGrafanaClient()
     bad_client.payload = {"jsonData": {}}
     monkeypatch.setattr(oncall, "GrafanaClient", lambda cfg: bad_client)
@@ -60,7 +65,8 @@ class DummyOnCallClient:
         self.responses: Dict[str, Any] = {}
         self.calls: list[tuple[str, Optional[Dict[str, Any]]]] = []
 
-    async def request(self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def request(
+            self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         normalized = path if path.endswith("/") else f"{path}/"
         self.calls.append((normalized, params))
         result = self.responses.get(normalized)
@@ -80,18 +86,29 @@ def client_fixture(monkeypatch: pytest.MonkeyPatch) -> DummyOnCallClient:
     return client
 
 
-def test_list_schedules_handles_single_and_multiple(ctx: SimpleNamespace, client_fixture: DummyOnCallClient) -> None:
-    client_fixture.responses["schedules/123/"] = {"id": 123, "name": "Primary", "team_id": 1, "time_zone": "UTC", "shifts": ["a", "b"]}
+def test_list_schedules_handles_single_and_multiple(
+        ctx: SimpleNamespace,
+        client_fixture: DummyOnCallClient) -> None:
+    client_fixture.responses["schedules/123/"] = {
+        "id": 123,
+        "name": "Primary",
+        "team_id": 1,
+        "time_zone": "UTC",
+        "shifts": [
+            "a",
+            "b"]}
     single = asyncio.run(oncall._list_schedules(ctx, "123", None, None))
     assert single[0]["name"] == "Primary"
 
-    client_fixture.responses["schedules/"] = {"results": [{"id": 1, "name": "Team"}, {"invalid": True}]}
+    client_fixture.responses["schedules/"] = {
+        "results": [{"id": 1, "name": "Team"}, {"invalid": True}]}
     multiple = asyncio.run(oncall._list_schedules(ctx, None, "7", 2))
     assert multiple[0]["teamId"] is None
     assert client_fixture.calls[-1][1]["team_id"] == "7"
 
 
-def test_oncall_client_headers_and_request(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_oncall_client_headers_and_request(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     config = SimpleNamespace(
         api_key="token",
         access_token="access",
@@ -126,14 +143,23 @@ def test_oncall_client_headers_and_request(monkeypatch: pytest.MonkeyPatch) -> N
         async def __aexit__(self, exc_type, exc, tb) -> None:
             return None
 
-        async def get(self, url: str, params: Dict[str, Any] | None = None, headers: Dict[str, Any] | None = None) -> DummyResponse:
+        async def get(self,
+                      url: str,
+                      params: Dict[str,
+                                   Any] | None = None,
+                      headers: Dict[str,
+                                    Any] | None = None) -> DummyResponse:
             self.calls.append((url, params))
             if "error" in url:
                 return DummyResponse(500, {})
             return DummyResponse(200, {"ok": True})
 
     dummy_client = DummyAsyncClient()
-    monkeypatch.setattr(oncall.httpx, "AsyncClient", lambda *args, **kwargs: dummy_client)
+    monkeypatch.setattr(
+        oncall.httpx,
+        "AsyncClient",
+        lambda *args,
+        **kwargs: dummy_client)
 
     result = asyncio.run(client.request("schedules/", params={"page": 1}))
     assert result == {"ok": True}
@@ -142,7 +168,9 @@ def test_oncall_client_headers_and_request(monkeypatch: pytest.MonkeyPatch) -> N
         asyncio.run(client.request("error/", params=None))
 
 
-def test_get_shift_and_lists(ctx: SimpleNamespace, client_fixture: DummyOnCallClient) -> None:
+def test_get_shift_and_lists(
+        ctx: SimpleNamespace,
+        client_fixture: DummyOnCallClient) -> None:
     client_fixture.responses.update(
         {
             "on_call_shifts/1/": {"id": 1},
@@ -157,7 +185,11 @@ def test_get_shift_and_lists(ctx: SimpleNamespace, client_fixture: DummyOnCallCl
     assert shift["id"] == 1
     teams = asyncio.run(oncall._get_team_list(ctx, page=1))
     assert teams[0]["id"] == 1
-    users = asyncio.run(oncall._get_users_list(ctx, page=None, username="user"))
+    users = asyncio.run(
+        oncall._get_users_list(
+            ctx,
+            page=None,
+            username="user"))
     assert users[0]["id"] == "u1"
     user = asyncio.run(oncall._get_user(ctx, "u1"))
     assert user["name"] == "User"
@@ -165,9 +197,15 @@ def test_get_shift_and_lists(ctx: SimpleNamespace, client_fixture: DummyOnCallCl
     assert current["users"][0]["id"] == "u1"
 
 
-def test_current_oncall_users_aggregates_details(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_current_oncall_users_aggregates_details(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_get_schedule(ctx: Any, schedule_id: str) -> Dict[str, Any]:
-        return {"id": schedule_id, "name": "Schedule", "on_call_now": ["1", "2"]}
+        return {
+            "id": schedule_id,
+            "name": "Schedule",
+            "on_call_now": [
+                "1",
+                "2"]}
 
     async def fake_get_user(ctx: Any, user_id: str) -> Dict[str, Any]:
         return {"id": user_id, "name": f"User {user_id}"}

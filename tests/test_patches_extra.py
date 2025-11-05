@@ -18,10 +18,12 @@ def anyio_backend() -> str:
 
 
 @pytest.mark.anyio("asyncio")
-async def test_ensure_sse_server_patch_wraps_and_runs(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_ensure_sse_server_patch_wraps_and_runs(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     class DummyFastMCP:
         def __init__(self) -> None:
-            self.settings = SimpleNamespace(host="127.0.0.1", port=9090, log_level="INFO")
+            self.settings = SimpleNamespace(
+                host="127.0.0.1", port=9090, log_level="INFO")
 
         def sse_app(self, mount_path):  # noqa: ANN001
             # Reference the argument so linters don't flag it as unused.
@@ -31,7 +33,8 @@ async def test_ensure_sse_server_patch_wraps_and_runs(monkeypatch: pytest.Monkey
         raise AssertionError("Original SSE run should be patched")
 
     # Install the original attribute that will be wrapped
-    DummyFastMCP.run_sse_async = original_run_sse_async  # type: ignore[attr-defined]
+    # type: ignore[attr-defined]
+    DummyFastMCP.run_sse_async = original_run_sse_async
 
     records = {}
 
@@ -72,4 +75,3 @@ async def test_ensure_sse_server_patch_wraps_and_runs(monkeypatch: pytest.Monkey
     assert records["config"]["port"] == 9090
     assert records["config"]["log_level"] == "info"
     assert records.get("served") is True
-

@@ -52,29 +52,45 @@ def ctx(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
 def captured(monkeypatch: pytest.MonkeyPatch) -> Dict[str, Any]:
     data: Dict[str, Any] = {}
 
-    async def fake_request(ctx: Any, method: str, path: str, params: Dict[str, Any] | None = None, json: Any = None):
+    async def fake_request(ctx: Any,
+                           method: str,
+                           path: str,
+                           params: Dict[str,
+                                        Any] | None = None,
+                           json: Any = None):
         data["method"] = method
         data["path"] = path
         data["json"] = json
+
         class DummyResponse:
             def json(self_inner) -> Dict[str, Any]:
                 return {"data": {"id": "123", "status": "pending"}}
         return DummyResponse()
 
-    async def fake_get_json(ctx: Any, path: str, params: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    async def fake_get_json(ctx: Any,
+                            path: str,
+                            params: Dict[str,
+                                         Any] | None = None) -> Dict[str,
+                                                                     Any]:
         data.setdefault("get_json", []).append((path, params))
         if path.endswith("/analyses"):
             return {"data": [{"id": "1", "name": "ErrorPatternLogs"}]}
         if path.endswith("/investigations"):
-            return {"data": [{"id": "123", "status": "finished", "name": "Investigation"}]}
-        return {"data": {"id": "123", "status": "finished", "name": "Investigation"}}
+            return {
+                "data": [{"id": "123", "status": "finished", "name": "Investigation"}]}
+        return {
+            "data": {
+                "id": "123",
+                "status": "finished",
+                "name": "Investigation"}}
 
     monkeypatch.setattr(sift, "_sift_request", fake_request)
     monkeypatch.setattr(sift, "_sift_get_json", fake_get_json)
     return data
 
 
-def test_create_investigation(ctx: SimpleNamespace, captured: Dict[str, Any]) -> None:
+def test_create_investigation(
+        ctx: SimpleNamespace, captured: Dict[str, Any]) -> None:
     start = datetime(2024, 1, 1, tzinfo=timezone.utc)
     end = start + timedelta(minutes=5)
     result = asyncio.run(
@@ -92,7 +108,8 @@ def test_create_investigation(ctx: SimpleNamespace, captured: Dict[str, Any]) ->
     assert payload["requestData"]["checks"] == ["Error"]
 
 
-def test_list_and_get_helpers(ctx: SimpleNamespace, captured: Dict[str, Any]) -> None:
+def test_list_and_get_helpers(
+        ctx: SimpleNamespace, captured: Dict[str, Any]) -> None:
     investigations = asyncio.run(sift._list_investigations(ctx, limit=5))
     assert investigations[0]["id"] == "123"
     investigation = asyncio.run(sift._get_investigation(ctx, "123"))
@@ -114,7 +131,9 @@ def test_wait_for_completion(monkeypatch: pytest.MonkeyPatch) -> None:
         return None
 
     monkeypatch.setattr(sift, "_get_investigation", fake_get_investigation)
-    monkeypatch.setattr(sift, "_now", lambda: datetime(2024, 1, 1, tzinfo=timezone.utc))
+    monkeypatch.setattr(
+        sift, "_now", lambda: datetime(
+            2024, 1, 1, tzinfo=timezone.utc))
     monkeypatch.setattr(asyncio, "sleep", fake_sleep)
 
     ctx = SimpleNamespace()
@@ -132,13 +151,15 @@ def test_find_analysis() -> None:
 
 
 def test_run_check(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def fake_create(ctx: Any, *args: Any, **kwargs: Any) -> Dict[str, Any]:
+    async def fake_create(ctx: Any, *args: Any, **
+                          kwargs: Any) -> Dict[str, Any]:
         return {"id": "1"}
 
     async def fake_wait(ctx: Any, investigation_id: str) -> Dict[str, Any]:
         return {"id": investigation_id, "status": "finished"}
 
-    async def fake_analyses(ctx: Any, investigation_id: str) -> List[Dict[str, Any]]:
+    async def fake_analyses(
+            ctx: Any, investigation_id: str) -> List[Dict[str, Any]]:
         return [{"name": "ErrorPatternLogs", "result": "ok"}]
 
     monkeypatch.setattr(sift, "_create_investigation", fake_create)
@@ -163,6 +184,7 @@ def test_sift_tools_require_context() -> None:
     app = FastMCP()
     sift.register(app)
     tools = asyncio.run(app.list_tools())
-    tool = next(tool for tool in tools if tool.name == "list_sift_investigations")
+    tool = next(tool for tool in tools if tool.name ==
+                "list_sift_investigations")
     with pytest.raises(ValueError):
         asyncio.run(tool.function(ctx=None))

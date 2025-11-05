@@ -32,7 +32,8 @@ async def _fetch_oncall_base_url(ctx: Context) -> str:
 
 
 class OnCallClient:
-    def __init__(self, base_url: str, config) -> None:  # type: ignore[no-untyped-def]
+    # type: ignore[no-untyped-def]
+    def __init__(self, base_url: str, config) -> None:
         self._base_url = base_url
         self._config = config
 
@@ -50,7 +51,8 @@ class OnCallClient:
             headers.setdefault("X-Grafana-URL", self._config.url)
         return headers
 
-    async def request(self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def request(
+            self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         url = f"{self._base_url}{path.lstrip('/')}"
         auth: httpx.Auth | None = None
         if self._config.basic_auth:
@@ -90,15 +92,18 @@ def _summarize_schedule(schedule: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-async def _list_schedules(
-    ctx: Context, schedule_id: Optional[str], team_id: Optional[str], page: Optional[int]
-) -> List[Dict[str, Any]]:
+async def _list_schedules(ctx: Context,
+                          schedule_id: Optional[str],
+                          team_id: Optional[str],
+                          page: Optional[int]) -> List[Dict[str,
+                                                            Any]]:
     client = await _create_client(ctx)
     if schedule_id:
         try:
             schedule = await client.request(f"schedules/{schedule_id}/")
         except ValueError as exc:
-            raise ValueError(f"Failed to fetch schedule '{schedule_id}': {exc}") from exc
+            raise ValueError(
+                f"Failed to fetch schedule '{schedule_id}': {exc}") from exc
         return [_summarize_schedule(schedule)]
     params: Dict[str, Any] = {}
     if page:
@@ -109,7 +114,8 @@ async def _list_schedules(
     results = payload.get("results")
     if not isinstance(results, list):
         return []
-    return [_summarize_schedule(item) for item in results if isinstance(item, dict)]
+    return [_summarize_schedule(item)
+            for item in results if isinstance(item, dict)]
 
 
 async def _get_shift(ctx: Context, shift_id: str) -> Dict[str, Any]:
@@ -117,7 +123,8 @@ async def _get_shift(ctx: Context, shift_id: str) -> Dict[str, Any]:
     return await client.request(f"on_call_shifts/{shift_id}/")
 
 
-async def _get_team_list(ctx: Context, page: Optional[int]) -> List[Dict[str, Any]]:
+async def _get_team_list(
+        ctx: Context, page: Optional[int]) -> List[Dict[str, Any]]:
     client = await _create_client(ctx)
     params = {"page": page} if page else None
     payload = await client.request("teams", params=params)
@@ -153,7 +160,8 @@ async def _get_schedule(ctx: Context, schedule_id: str) -> Dict[str, Any]:
     return await client.request(f"schedules/{schedule_id}/")
 
 
-async def _current_oncall_users(ctx: Context, schedule_id: str) -> Dict[str, Any]:
+async def _current_oncall_users(
+        ctx: Context, schedule_id: str) -> Dict[str, Any]:
     schedule = await _get_schedule(ctx, schedule_id)
     oncall = schedule.get("on_call_now")
     users: List[Dict[str, Any]] = []
@@ -189,7 +197,8 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> Any:
         if ctx is None:
-            raise ValueError("Context injection failed for list_oncall_schedules")
+            raise ValueError(
+                "Context injection failed for list_oncall_schedules")
         schedules = await _list_schedules(ctx, scheduleId, teamId, page)
         return {
             "schedules": schedules,
@@ -214,7 +223,8 @@ def register(app: FastMCP) -> None:
         try:
             return await _get_shift(ctx, shiftId)
         except ValueError as exc:
-            raise ValueError(f"Failed to fetch shift '{shiftId}': {exc}") from exc
+            raise ValueError(
+                f"Failed to fetch shift '{shiftId}': {exc}") from exc
 
     @app.tool(
         name="get_current_oncall_users",
@@ -226,7 +236,8 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> Dict[str, Any]:
         if ctx is None:
-            raise ValueError("Context injection failed for get_current_oncall_users")
+            raise ValueError(
+                "Context injection failed for get_current_oncall_users")
         return await _current_oncall_users(ctx, scheduleId)
 
     @app.tool(
@@ -277,7 +288,8 @@ def register(app: FastMCP) -> None:
                     "type": "oncall_users_result"
                 }
             except ValueError as exc:
-                raise ValueError(f"Failed to fetch OnCall user '{userId}': {exc}") from exc
+                raise ValueError(
+                    f"Failed to fetch OnCall user '{userId}': {exc}") from exc
         users = await _get_users_list(ctx, page, username)
         return {
             "users": users,
@@ -289,4 +301,3 @@ def register(app: FastMCP) -> None:
 
 
 __all__ = ["register"]
-

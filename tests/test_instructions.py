@@ -16,13 +16,16 @@ def clear_cache():
     load_instructions.cache_clear()  # type: ignore[attr-defined]
 
 
-def test_load_instructions_defaults_to_builtin(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_instructions_defaults_to_builtin(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MCP_INSTRUCTIONS_PATH", raising=False)
     value = load_instructions()
     assert "overwrite:true" in value
 
 
-def test_load_instructions_uses_env_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_instructions_uses_env_file(
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch) -> None:
     custom = tmp_path / "custom.md"
     custom.write_text("Custom instructions", encoding="utf-8")
     monkeypatch.setenv("MCP_INSTRUCTIONS_PATH", str(custom))
@@ -31,7 +34,8 @@ def test_load_instructions_uses_env_file(tmp_path: Path, monkeypatch: pytest.Mon
     assert value == "Custom instructions"
 
 
-def test_load_instructions_applies_placeholders(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_instructions_applies_placeholders(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     content = "UID={{DASH_UID}} FOLDER={{FOLDER_UID}} KEEP={{UNKNOWN}}"
     custom = tmp_path / "prompt.md"
     custom.write_text(content, encoding="utf-8")

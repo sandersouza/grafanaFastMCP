@@ -20,7 +20,8 @@ def _make_context(request: object | None) -> SimpleNamespace:
     )
 
 
-def test_get_config_without_request_uses_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_config_without_request_uses_environment(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     env_calls = 0
 
     def fake_env() -> GrafanaConfig:
@@ -29,7 +30,11 @@ def test_get_config_without_request_uses_environment(monkeypatch: pytest.MonkeyP
         return GrafanaConfig(api_key="env")
 
     monkeypatch.setattr(context, "grafana_config_from_env", fake_env)
-    monkeypatch.setattr(context, "grafana_config_from_headers", lambda _: GrafanaConfig(api_key="header"))
+    monkeypatch.setattr(
+        context,
+        "grafana_config_from_headers",
+        lambda _: GrafanaConfig(
+            api_key="header"))
 
     ctx = _make_context(request=None)
 
@@ -41,7 +46,8 @@ def test_get_config_without_request_uses_environment(monkeypatch: pytest.MonkeyP
     assert env_calls == 1
 
 
-def test_get_config_when_request_attribute_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_config_when_request_attribute_missing(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     env_calls = 0
 
     def fake_env() -> GrafanaConfig:
@@ -50,9 +56,15 @@ def test_get_config_when_request_attribute_missing(monkeypatch: pytest.MonkeyPat
         return GrafanaConfig(api_key="env")
 
     monkeypatch.setattr(context, "grafana_config_from_env", fake_env)
-    monkeypatch.setattr(context, "grafana_config_from_headers", lambda _: GrafanaConfig(api_key="header"))
+    monkeypatch.setattr(
+        context,
+        "grafana_config_from_headers",
+        lambda _: GrafanaConfig(
+            api_key="header"))
 
-    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace()))
+    ctx = SimpleNamespace(
+        request_context=SimpleNamespace(
+            session=SimpleNamespace()))
 
     result = context.get_grafana_config(ctx)
     again = context.get_grafana_config(ctx)
@@ -62,14 +74,19 @@ def test_get_config_when_request_attribute_missing(monkeypatch: pytest.MonkeyPat
     assert env_calls == 1
 
 
-def test_get_config_prefers_header_values(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_config_prefers_header_values(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     header_config = GrafanaConfig(api_key="header", url="https://headers")
 
     def fake_headers(headers: dict[str, str]) -> GrafanaConfig:
         assert headers == {"x-test": "value"}
         return header_config
 
-    monkeypatch.setattr(context, "grafana_config_from_env", lambda: GrafanaConfig(api_key="env"))
+    monkeypatch.setattr(
+        context,
+        "grafana_config_from_env",
+        lambda: GrafanaConfig(
+            api_key="env"))
     monkeypatch.setattr(context, "grafana_config_from_headers", fake_headers)
 
     request = SimpleNamespace(headers={"x-test": "value"})
@@ -91,7 +108,11 @@ def test_get_config_falls_back_to_env_when_api_key_missing(
         return env_config
 
     monkeypatch.setattr(context, "grafana_config_from_env", fake_env)
-    monkeypatch.setattr(context, "grafana_config_from_headers", lambda _: GrafanaConfig(api_key=""))
+    monkeypatch.setattr(
+        context,
+        "grafana_config_from_headers",
+        lambda _: GrafanaConfig(
+            api_key=""))
 
     request = SimpleNamespace(headers={})
     ctx = _make_context(request)

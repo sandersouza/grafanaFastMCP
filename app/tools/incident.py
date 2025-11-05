@@ -10,7 +10,8 @@ from ..context import get_grafana_config
 from ..grafana_client import GrafanaAPIError, GrafanaClient
 
 
-async def _incident_rpc(ctx: Context, method: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+async def _incident_rpc(ctx: Context, method: str,
+                        payload: Dict[str, Any]) -> Dict[str, Any]:
     config = get_grafana_config(ctx)
     client = GrafanaClient(config)
     path = f"/plugins/grafana-irm-app/resources/api/v1/{method}"
@@ -49,7 +50,8 @@ async def _list_incidents(
     return await _incident_rpc(ctx, "IncidentsService.QueryIncidentPreviews", payload)
 
 
-async def _create_incident(ctx: Context, args: Dict[str, Any]) -> Dict[str, Any]:
+async def _create_incident(
+        ctx: Context, args: Dict[str, Any]) -> Dict[str, Any]:
     payload = {
         "title": args.get("title"),
         "severity": args.get("severity"),
@@ -138,7 +140,8 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> Dict[str, Any]:
         if ctx is None:
-            raise ValueError("Context injection failed for add_activity_to_incident")
+            raise ValueError(
+                "Context injection failed for add_activity_to_incident")
         args = {
             "incidentId": incidentId,
             "body": body,
@@ -161,9 +164,9 @@ def register(app: FastMCP) -> None:
             return await _get_incident(ctx, incidentId)
         except GrafanaAPIError as exc:
             if exc.status_code == 404:
-                raise ValueError(f"Incident with ID '{incidentId}' not found") from exc
+                raise ValueError(
+                    f"Incident with ID '{incidentId}' not found") from exc
             raise
 
 
 __all__ = ["register"]
-

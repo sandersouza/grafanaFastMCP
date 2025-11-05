@@ -35,8 +35,7 @@ def register(app: FastMCP) -> None:
         title="Generate navigation deeplink",
         description=(
             "Generate navigation URLs for dashboards, panels, or the Explore view. Optional time ranges and custom "
-            "query parameters are supported."
-        ),
+            "query parameters are supported."),
     )
     async def generate_deeplink(
         resourceType: str,
@@ -54,11 +53,13 @@ def register(app: FastMCP) -> None:
         deeplink: str
         if resource == "dashboard":
             if not dashboardUid:
-                raise ValueError("dashboardUid is required for dashboard links")
+                raise ValueError(
+                    "dashboardUid is required for dashboard links")
             deeplink = f"{base_url}/d/{dashboardUid}"
         elif resource == "panel":
             if not dashboardUid or panelId is None:
-                raise ValueError("dashboardUid and panelId are required for panel links")
+                raise ValueError(
+                    "dashboardUid and panelId are required for panel links")
             deeplink = f"{base_url}/d/{dashboardUid}?viewPanel={panelId}"
         elif resource == "explore":
             if not datasourceUid:
