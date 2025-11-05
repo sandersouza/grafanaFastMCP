@@ -49,10 +49,12 @@ def test_join_path(base: str, segment: str, expected: str) -> None:
 def test_normalize_streamable_http_path(
     value: str, mount_path: str, default_segment: str, expected: str
 ) -> None:
-    assert server._normalize_streamable_http_path(value, mount_path, default_segment) == expected
+    assert server._normalize_streamable_http_path(
+        value, mount_path, default_segment) == expected
 
 
-def test_create_app_configures_fastmcp(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_app_configures_fastmcp(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, int] = {"accept": 0, "server": 0}
 
     def _increment_accept() -> None:
@@ -61,14 +63,23 @@ def test_create_app_configures_fastmcp(monkeypatch: pytest.MonkeyPatch) -> None:
     def _increment_server() -> None:
         calls["server"] += 1
 
-    monkeypatch.setattr(server, "ensure_streamable_http_accept_patch", _increment_accept)
-    monkeypatch.setattr(server, "ensure_streamable_http_server_patch", _increment_server)
+    monkeypatch.setattr(
+        server,
+        "ensure_streamable_http_accept_patch",
+        _increment_accept)
+    monkeypatch.setattr(
+        server,
+        "ensure_streamable_http_server_patch",
+        _increment_server)
 
     instructions = object()
     monkeypatch.setattr(server, "load_instructions", lambda: instructions)
 
     registered: list[object] = []
-    monkeypatch.setattr(server, "register_all", lambda app: registered.append(app))
+    monkeypatch.setattr(
+        server,
+        "register_all",
+        lambda app: registered.append(app))
 
     class DummyFastMCP:
         def __init__(self, **kwargs: object) -> None:
@@ -113,10 +124,12 @@ def test_register_streamable_http_alias_ignores_missing_routes() -> None:
     class DummyFastMCP:
         pass
 
-    server._register_streamable_http_alias(DummyFastMCP())  # type: ignore[arg-type]
+    server._register_streamable_http_alias(
+        DummyFastMCP())  # type: ignore[arg-type]
 
 
-def test_register_streamable_http_alias_adds_route(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_register_streamable_http_alias_adds_route(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     from starlette.applications import Starlette
     from starlette.responses import PlainTextResponse
     from starlette.routing import Route
@@ -128,7 +141,8 @@ def test_register_streamable_http_alias_adds_route(monkeypatch: pytest.MonkeyPat
         def __init__(self, session_manager: object) -> None:
             self.session_manager = session_manager
 
-        async def __call__(self, scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+        # type: ignore[no-untyped-def]
+        async def __call__(self, scope, receive, send) -> None:
             alias_calls.append(scope["path"])
             response = PlainTextResponse("alias-handled")
             await response(scope, receive, send)
@@ -156,12 +170,19 @@ def test_register_streamable_http_alias_adds_route(monkeypatch: pytest.MonkeyPat
 
     base_calls: list[str] = []
 
-    async def base_endpoint(scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+    # type: ignore[no-untyped-def]
+    async def base_endpoint(scope, receive, send) -> None:
         base_calls.append(scope["path"])
         response = PlainTextResponse("base")
         await response(scope, receive, send)
 
-    app = Starlette(routes=[Route("/mcp", endpoint=base_endpoint, methods=["POST"]), alias_route])
+    app = Starlette(
+        routes=[
+            Route(
+                "/mcp",
+                endpoint=base_endpoint,
+                methods=["POST"]),
+            alias_route])
     client = TestClient(app)
 
     response = client.post("/Grafana/link_123/update_dashboard")

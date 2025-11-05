@@ -32,13 +32,19 @@ def _request_shutdown(app: object, transport: str) -> None:
     session_manager = getattr(app, "_session_manager", None)
     if session_manager is not None:
         task_group = getattr(session_manager, "_task_group", None)
-        cancel_scope = getattr(task_group, "cancel_scope", None) if task_group is not None else None
+        cancel_scope = getattr(
+            task_group,
+            "cancel_scope",
+            None) if task_group is not None else None
         if cancel_scope is not None:
             try:
                 cancel_scope.cancel()
-                logger.debug("Cancelled StreamableHTTP session manager task group")
+                logger.debug(
+                    "Cancelled StreamableHTTP session manager task group")
             except Exception:  # pragma: no cover - defensive cleanup
-                logger.debug("Failed to cancel StreamableHTTP session manager", exc_info=True)
+                logger.debug(
+                    "Failed to cancel StreamableHTTP session manager",
+                    exc_info=True)
 
     if transport == "sse":
         server = getattr(app, "_uvicorn_server", None)
@@ -47,7 +53,9 @@ def _request_shutdown(app: object, transport: str) -> None:
                 server.should_exit = True
                 logger.debug("Requested SSE server shutdown")
             except Exception:  # pragma: no cover - defensive cleanup
-                logger.debug("Failed to request SSE server shutdown", exc_info=True)
+                logger.debug(
+                    "Failed to request SSE server shutdown",
+                    exc_info=True)
 
 
 def _parse_address(value: str) -> Tuple[str, int]:
@@ -62,13 +70,33 @@ def _parse_address(value: str) -> Tuple[str, int]:
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Run the Grafana FastMCP server.")
-    parser.add_argument("--env-file", dest="env_file", default=None, help="Path to a .env file to load before starting")
-    parser.add_argument("--address", default="localhost:8000", help="Host and port to bind the server")
-    parser.add_argument("--base-path", default="/", help="Base path when using the SSE or Streamable HTTP transports")
-    parser.add_argument("--log-level", default="INFO", help="Log level (DEBUG, INFO, WARN, ERROR)")
-    parser.add_argument("--debug", action="store_true", help="Enable debug mode for FastMCP")
-    parser.add_argument("--version", action="store_true", help="Print version and exit")
+    parser = argparse.ArgumentParser(
+        description="Run the Grafana FastMCP server.")
+    parser.add_argument(
+        "--env-file",
+        dest="env_file",
+        default=None,
+        help="Path to a .env file to load before starting")
+    parser.add_argument(
+        "--address",
+        default="localhost:8000",
+        help="Host and port to bind the server")
+    parser.add_argument(
+        "--base-path",
+        default="/",
+        help="Base path when using the SSE or Streamable HTTP transports")
+    parser.add_argument(
+        "--log-level",
+        default="INFO",
+        help="Log level (DEBUG, INFO, WARN, ERROR)")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug mode for FastMCP")
+    parser.add_argument(
+        "--version",
+        action="store_true",
+        help="Print version and exit")
     parser.add_argument(
         "--transport",
         choices=["sse", "streamable-http", "stdio"],
@@ -134,7 +162,8 @@ def main(argv: list[str] | None = None) -> None:
                 break
 
     if selected_env:
-        # CLI arguments will override these values later; shell exports only apply when .env is missing.
+        # CLI arguments will override these values later; shell exports only
+        # apply when .env is missing.
         load_dotenv(selected_env, override=True)
 
     env_defaults = {
@@ -144,12 +173,14 @@ def main(argv: list[str] | None = None) -> None:
         "transport": os.getenv("TRANSPORT"),
         "streamable_http_path": os.getenv("STREAMABLE_HTTP_PATH"),
     }
-    parser.set_defaults(**{key: value for key, value in env_defaults.items() if value })
+    parser.set_defaults(**{key: value for key,
+                           value in env_defaults.items() if value})
 
     args = parser.parse_args(argv)
 
     argv_list = list(argv) if argv is not None else []
-    transport_overridden = any(arg.startswith("--transport") for arg in argv_list)
+    transport_overridden = any(arg.startswith("--transport")
+                               for arg in argv_list)
     if running_frozen and not transport_overridden:
         args.transport = "stdio"
         os.environ["TRANSPORT"] = "stdio"
@@ -166,7 +197,8 @@ def main(argv: list[str] | None = None) -> None:
     host, port = _parse_address(args.address)
     log_level_name = args.log_level.upper()
     log_level_value = getattr(logging, log_level_name, logging.INFO)
-    logging.basicConfig(level=log_level_value, format="%(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(level=log_level_value,
+                        format="%(levelname)s %(name)s: %(message)s")
 
     noisy_loggers = [
         "mcp.server",
@@ -175,7 +207,8 @@ def main(argv: list[str] | None = None) -> None:
         "uvicorn.access",
         "httpx",
     ]
-    target_level = logging.WARNING if (not args.debug and log_level_value >= logging.INFO) else log_level_value
+    target_level = logging.WARNING if (
+        not args.debug and log_level_value >= logging.INFO) else log_level_value
     for logger_name in noisy_loggers:
         logging.getLogger(logger_name).setLevel(target_level)
 
@@ -189,12 +222,17 @@ def main(argv: list[str] | None = None) -> None:
         log_level=log_level_name,
         debug=args.debug,
     )
-    
+
     logger = logging.getLogger(__name__)
     if transport == "sse":
-        logger.info("SSE endpoint available at '%s' (messages at '%s')", app.settings.sse_path, app.settings.message_path)
+        logger.info(
+            "SSE endpoint available at '%s' (messages at '%s')",
+            app.settings.sse_path,
+            app.settings.message_path)
     elif transport == "streamable-http":
-        logger.info("Streamable HTTP endpoint available at '%s'", app.settings.streamable_http_path)
+        logger.info(
+            "Streamable HTTP endpoint available at '%s'",
+            app.settings.streamable_http_path)
     elif base_path not in ("", "/"):
         logger.info(
             "Ignoring base path '%s' because transport '%s' does not expose HTTP routes.",
@@ -206,9 +244,11 @@ def main(argv: list[str] | None = None) -> None:
     try:
         app.run(transport, mount_path=mount_path)
     except KeyboardInterrupt:
-        logger.info("Received interrupt signal, shutting down Grafana FastMCP server...")
+        logger.info(
+            "Received interrupt signal, shutting down Grafana FastMCP server...")
         _request_shutdown(app, transport)
         logger.info("Grafana FastMCP server stopped")
+
 
 if __name__ == "__main__":  # pragma: no cover - manual execution
     main()

@@ -32,8 +32,14 @@ class GrafanaCapabilities:
     plugin_ids: FrozenSet[str] = field(default_factory=frozenset)
 
     def __post_init__(self) -> None:  # pragma: no cover - dataclass hook
-        object.__setattr__(self, "datasource_types", _normalize_items(self.datasource_types))
-        object.__setattr__(self, "plugin_ids", _normalize_items(self.plugin_ids))
+        object.__setattr__(
+            self,
+            "datasource_types",
+            _normalize_items(
+                self.datasource_types))
+        object.__setattr__(
+            self, "plugin_ids", _normalize_items(
+                self.plugin_ids))
 
     def has_datasource_type(self, expected: str) -> bool:
         if not expected:
@@ -53,8 +59,8 @@ async def _fetch_datasource_types(client: GrafanaClient) -> Set[str]:
         payload = await client.get_json("/datasources")
     except GrafanaAPIError as exc:  # pragma: no cover - defensive
         LOGGER.info(
-            "Grafana datasources endpoint returned %s; assuming no datasource-based tools", exc.status_code
-        )
+            "Grafana datasources endpoint returned %s; assuming no datasource-based tools",
+            exc.status_code)
         return set()
     except Exception:  # pragma: no cover - defensive
         LOGGER.warning("Failed to list Grafana datasources", exc_info=True)
@@ -71,7 +77,9 @@ async def _fetch_datasource_types(client: GrafanaClient) -> Set[str]:
             LOGGER.debug("Unexpected datasources payload format: %r", payload)
             return set()
     else:
-        LOGGER.debug("Ignoring datasources payload of type %s", type(payload).__name__)
+        LOGGER.debug(
+            "Ignoring datasources payload of type %s",
+            type(payload).__name__)
         return set()
 
     types: Set[str] = set()
@@ -91,8 +99,8 @@ async def _fetch_plugin_ids(client: GrafanaClient) -> Set[str]:
         payload = await client.get_json("/plugins")
     except GrafanaAPIError as exc:  # pragma: no cover - defensive
         LOGGER.info(
-            "Grafana plugins endpoint returned %s; plugin-dependent tools will be disabled", exc.status_code
-        )
+            "Grafana plugins endpoint returned %s; plugin-dependent tools will be disabled",
+            exc.status_code)
         return set()
     except Exception:  # pragma: no cover - defensive
         LOGGER.warning("Failed to list Grafana plugins", exc_info=True)
@@ -109,7 +117,9 @@ async def _fetch_plugin_ids(client: GrafanaClient) -> Set[str]:
             LOGGER.debug("Unexpected plugins payload format: %r", payload)
             return set()
     else:
-        LOGGER.debug("Ignoring plugins payload of type %s", type(payload).__name__)
+        LOGGER.debug(
+            "Ignoring plugins payload of type %s",
+            type(payload).__name__)
         return set()
 
     plugin_ids: Set[str] = set()
@@ -137,7 +147,9 @@ async def _collect_capabilities(config: GrafanaConfig) -> GrafanaCapabilities:
             "plugin_ids": sorted(plugin_ids),
         },
     )
-    return GrafanaCapabilities(datasource_types=frozenset(datasource_types), plugin_ids=frozenset(plugin_ids))
+    return GrafanaCapabilities(
+        datasource_types=frozenset(datasource_types),
+        plugin_ids=frozenset(plugin_ids))
 
 
 def detect_capabilities(config: GrafanaConfig) -> GrafanaCapabilities:
@@ -154,7 +166,9 @@ def detect_capabilities(config: GrafanaConfig) -> GrafanaCapabilities:
         try:
             return loop.run_until_complete(_collect_capabilities(config))
         except Exception:  # pragma: no cover - defensive
-            LOGGER.warning("Capability detection failed inside fallback loop", exc_info=True)
+            LOGGER.warning(
+                "Capability detection failed inside fallback loop",
+                exc_info=True)
             return GrafanaCapabilities()
         finally:
             loop.close()

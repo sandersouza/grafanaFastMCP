@@ -22,7 +22,8 @@ class GrafanaAPIError(RuntimeError):
     """Error raised when the Grafana API returns an unexpected response."""
 
     def __init__(self, status_code: int, message: str) -> None:
-        super().__init__(f"Grafana API request failed with status {status_code}: {message}")
+        super().__init__(
+            f"Grafana API request failed with status {status_code}: {message}")
         self.status_code = status_code
         self.message = message
 
@@ -54,13 +55,16 @@ class GrafanaClient:
             self._verify = True
             self._cert = None
 
-    def _headers(self, extra: Optional[Mapping[str, str]] = None) -> MutableMapping[str, str]:
+    def _headers(
+            self, extra: Optional[Mapping[str, str]] = None) -> MutableMapping[str, str]:
         headers: MutableMapping[str, str] = {
             "User-Agent": USER_AGENT,
             "Accept": "application/json",
         }
         if self.config.api_key:
-            headers.setdefault("Authorization", f"Bearer {self.config.api_key}")
+            headers.setdefault(
+                "Authorization",
+                f"Bearer {self.config.api_key}")
         if self.config.access_token and self.config.id_token:
             headers.setdefault("X-Access-Token", self.config.access_token)
             headers.setdefault("X-Grafana-Id", self.config.id_token)
@@ -89,7 +93,11 @@ class GrafanaClient:
     ) -> httpx.Response:
         url = self._absolute_url(path)
         combined_headers = self._headers(headers)
-        LOGGER.debug("Performing Grafana request", extra={"method": method, "url": url})
+        LOGGER.debug(
+            "Performing Grafana request",
+            extra={
+                "method": method,
+                "url": url})
         async with httpx.AsyncClient(
             timeout=_DEFAULT_TIMEOUT,
             verify=self._verify,
@@ -105,7 +113,8 @@ class GrafanaClient:
             )
         if response.status_code >= 400:
             body = response.text
-            LOGGER.debug("Grafana API error", extra={"status": response.status_code, "body": body[:512]})
+            LOGGER.debug("Grafana API error", extra={
+                         "status": response.status_code, "body": body[:512]})
             raise GrafanaAPIError(response.status_code, body)
         return response
 
@@ -122,7 +131,9 @@ class GrafanaClient:
         headers: Optional[Mapping[str, str]] = None,
     ) -> Any:
         response = await self.request("POST", path, params=params, json=json, headers=headers)
-        if response.headers.get("content-type", "").startswith("application/json"):
+        if response.headers.get(
+            "content-type",
+                "").startswith("application/json"):
             return response.json()
         return response.text
 

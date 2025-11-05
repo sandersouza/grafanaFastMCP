@@ -21,7 +21,9 @@ def test_matchers_and_time_range() -> None:
     assert isinstance(end, datetime)
     assert end > start
     with pytest.raises(ValueError):
-        pyroscope._default_time_range("2024-01-01T00:00:00Z", "2023-01-01T00:00:00Z")
+        pyroscope._default_time_range(
+            "2024-01-01T00:00:00Z",
+            "2023-01-01T00:00:00Z")
 
 
 class DummyPyroscopeClient:
@@ -29,11 +31,13 @@ class DummyPyroscopeClient:
         self.responses: Dict[str, Any] = {}
         self.calls: list[tuple[str, Optional[Dict[str, Any]]]] = []
 
-    async def get_json(self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    async def get_json(
+            self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         self.calls.append((path, params))
         return self.responses.get(path, {})
 
-    async def request(self, method: str, path: str, params: Optional[Dict[str, Any]] = None) -> SimpleNamespace:
+    async def request(self, method: str, path: str,
+                      params: Optional[Dict[str, Any]] = None) -> SimpleNamespace:
         self.calls.append((path, params))
         return SimpleNamespace(text="digraph G{}")
 
@@ -43,7 +47,8 @@ def ctx(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     config = SimpleNamespace(url="https://grafana.local")
 
     class ValidatingClient(DummyPyroscopeClient):
-        async def get_json(self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        async def get_json(
+                self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
             return {"id": "ds"}
 
     base_client = ValidatingClient()
@@ -63,32 +68,53 @@ def client(monkeypatch: pytest.MonkeyPatch) -> DummyPyroscopeClient:
     return client
 
 
-def test_list_label_names(ctx: SimpleNamespace, client: DummyPyroscopeClient) -> None:
+def test_list_label_names(
+        ctx: SimpleNamespace,
+        client: DummyPyroscopeClient) -> None:
     client.responses["/datasources/proxy/uid/uid/pyroscope/api/v1/label/names"] = {
-        "names": ["app", "instance"],
-    }
-    names = asyncio.run(pyroscope._list_label_names(ctx, "uid", matchers="app=\"api\"", start=None, end=None))
+        "names": ["app", "instance"], }
+    names = asyncio.run(
+        pyroscope._list_label_names(
+            ctx,
+            "uid",
+            matchers="app=\"api\"",
+            start=None,
+            end=None))
     assert "app" in names
 
 
-def test_list_label_values(ctx: SimpleNamespace, client: DummyPyroscopeClient) -> None:
+def test_list_label_values(
+        ctx: SimpleNamespace,
+        client: DummyPyroscopeClient) -> None:
     client.responses["/datasources/proxy/uid/uid/pyroscope/api/v1/label/app/values"] = {
-        "values": ["api", "worker"],
-    }
-    values = asyncio.run(pyroscope._list_label_values(ctx, "uid", "app", None, None, None))
+        "values": ["api", "worker"], }
+    values = asyncio.run(
+        pyroscope._list_label_values(
+            ctx, "uid", "app", None, None, None))
     assert values == ["api", "worker"]
 
 
-def test_list_profile_types(ctx: SimpleNamespace, client: DummyPyroscopeClient) -> None:
+def test_list_profile_types(
+        ctx: SimpleNamespace,
+        client: DummyPyroscopeClient) -> None:
     client.responses["/datasources/proxy/uid/uid/pyroscope/api/v1/profile_types"] = {
-        "types": ["cpu", "memory"],
-    }
+        "types": ["cpu", "memory"], }
     types = asyncio.run(pyroscope._list_profile_types(ctx, "uid", None, None))
     assert types == ["cpu", "memory"]
 
 
-def test_fetch_profile(ctx: SimpleNamespace, client: DummyPyroscopeClient) -> None:
-    profile = asyncio.run(pyroscope._fetch_profile(ctx, "uid", "cpu", matchers=None, start=None, end=None, max_node_depth=5))
+def test_fetch_profile(
+        ctx: SimpleNamespace,
+        client: DummyPyroscopeClient) -> None:
+    profile = asyncio.run(
+        pyroscope._fetch_profile(
+            ctx,
+            "uid",
+            "cpu",
+            matchers=None,
+            start=None,
+            end=None,
+            max_node_depth=5))
     assert "digraph" in profile
 
 
@@ -96,6 +122,11 @@ def test_pyroscope_tools_require_context() -> None:
     app = FastMCP()
     pyroscope.register(app)
     tools = asyncio.run(app.list_tools())
-    tool = next(tool for tool in tools if tool.name == "fetch_pyroscope_profile")
+    tool = next(tool for tool in tools if tool.name ==
+                "fetch_pyroscope_profile")
     with pytest.raises(ValueError):
-        asyncio.run(tool.function(dataSourceUid="uid", profileType="cpu", ctx=None))
+        asyncio.run(
+            tool.function(
+                dataSourceUid="uid",
+                profileType="cpu",
+                ctx=None))

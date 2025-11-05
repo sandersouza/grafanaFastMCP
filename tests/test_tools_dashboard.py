@@ -16,37 +16,32 @@ from mcp.server.fastmcp import FastMCP
 
 @pytest.fixture
 def sample_dashboard() -> Dict[str, Any]:
-    return {
-        "dashboard": {
-            "title": "Example",
-            "description": "Sample",
-            "tags": ["infra"],
-            "refresh": "5m",
-            "time": {"from": "now-1h", "to": "now"},
-            "panels": [
-                {
-                    "id": 1,
-                    "title": "CPU",
-                    "type": "graph",
-                    "description": "CPU usage",
-                    "targets": [{"expr": "sum(rate(http_requests_total[5m]))"}],
-                    "datasource": {"uid": "ds1", "type": "prometheus"},
-                },
-                {
-                    "id": 2,
-                    "title": "Logs",
-                    "type": "logs",
-                    "targets": [],
-                },
-            ],
-            "templating": {
-                "list": [
-                    {"name": "env", "type": "query", "label": "Environment"}
-                ]
-            },
-        },
-        "meta": {"folderUid": "folder"},
-    }
+    return {"dashboard": {"title": "Example",
+                          "description": "Sample",
+                          "tags": ["infra"],
+                          "refresh": "5m",
+                          "time": {"from": "now-1h",
+                                   "to": "now"},
+                          "panels": [{"id": 1,
+                                      "title": "CPU",
+                                      "type": "graph",
+                                      "description": "CPU usage",
+                                      "targets": [{"expr": "sum(rate(http_requests_total[5m]))"}],
+                                      "datasource": {"uid": "ds1",
+                                                     "type": "prometheus"},
+                                      },
+                                     {"id": 2,
+                                      "title": "Logs",
+                                      "type": "logs",
+                                      "targets": [],
+                                      },
+                                     ],
+                          "templating": {"list": [{"name": "env",
+                                                   "type": "query",
+                                                   "label": "Environment"}]},
+                          },
+            "meta": {"folderUid": "folder"},
+            }
 
 
 @pytest.fixture(autouse=True)
@@ -65,9 +60,12 @@ def test_parse_json_path_and_navigation() -> None:
     assert append_segments[-1].is_append is True
 
     data = {"panels": [{"targets": [{}]}]}
-    dashboard._apply_json_path(data, "panels[0].targets[0]", {"expr": "1"}, remove=False)
+    dashboard._apply_json_path(
+        data, "panels[0].targets[0]", {
+            "expr": "1"}, remove=False)
     assert data["panels"][0]["targets"][0]["expr"] == "1"
-    dashboard._apply_json_path(data, "panels[0].targets/-", {"expr": "2"}, remove=False)
+    dashboard._apply_json_path(
+        data, "panels[0].targets/-", {"expr": "2"}, remove=False)
     assert len(data["panels"][0]["targets"]) == 2
     dashboard._apply_json_path(data, "panels[0].targets", None, remove=True)
     assert data["panels"][0].get("targets") is None
@@ -80,7 +78,8 @@ def test_parse_json_path_errors() -> None:
         dashboard._apply_json_path({}, "panels[*]", None, remove=False)
 
 
-def test_evaluate_json_path_returns_values(sample_dashboard: Dict[str, Any]) -> None:
+def test_evaluate_json_path_returns_values(
+        sample_dashboard: Dict[str, Any]) -> None:
     dashboard_obj = sample_dashboard["dashboard"]
     result = dashboard._evaluate_json_path(dashboard_obj, "panels[0].title")
     assert result == "CPU"
@@ -89,7 +88,10 @@ def test_evaluate_json_path_returns_values(sample_dashboard: Dict[str, Any]) -> 
 
 
 def test_build_summary(sample_dashboard: Dict[str, Any]) -> None:
-    summary = dashboard._build_summary("uid123", sample_dashboard["dashboard"], sample_dashboard["meta"])
+    summary = dashboard._build_summary(
+        "uid123",
+        sample_dashboard["dashboard"],
+        sample_dashboard["meta"])
     assert summary["uid"] == "uid123"
     assert summary["panelCount"] == 2
     assert summary["variables"][0]["name"] == "env"
@@ -112,27 +114,37 @@ class DummyDashboardClient:
         params: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        self.post_calls.append((path, json, {"params": params, "headers": headers}))
+        self.post_calls.append(
+            (path, json, {"params": params, "headers": headers}))
         return {"status": "ok"}
 
 
 @pytest.fixture
-def dashboard_tools(monkeypatch: pytest.MonkeyPatch, sample_dashboard: Dict[str, Any]) -> tuple[Dict[str, Any], DummyDashboardClient, SimpleNamespace]:
+def dashboard_tools(monkeypatch: pytest.MonkeyPatch,
+                    sample_dashboard: Dict[str,
+                                           Any]) -> tuple[Dict[str,
+                                                               Any],
+                                                          DummyDashboardClient,
+                                                          SimpleNamespace]:
     client = DummyDashboardClient(sample_dashboard)
     config = SimpleNamespace()
     monkeypatch.setattr(dashboard, "get_grafana_config", lambda _: config)
     monkeypatch.setattr(dashboard, "GrafanaClient", lambda cfg: client)
-    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace()))
+    ctx = SimpleNamespace(
+        request_context=SimpleNamespace(
+            session=SimpleNamespace()))
     app = FastMCP()
     dashboard.register(app)
     tool_map = {tool.name: tool for tool in asyncio.run(app.list_tools())}
     return tool_map, client, ctx
 
 
-def test_update_dashboard_with_patches(monkeypatch: pytest.MonkeyPatch, sample_dashboard: Dict[str, Any]) -> None:
+def test_update_dashboard_with_patches(
+        monkeypatch: pytest.MonkeyPatch, sample_dashboard: Dict[str, Any]) -> None:
     captured: Dict[str, Any] = {}
 
-    async def fake_get(ctx: Any, uid: str, *, use_cache: bool = True) -> Dict[str, Any]:
+    async def fake_get(ctx: Any, uid: str, *
+    , use_cache: bool = True) -> Dict[str, Any]:
         return deepcopy(sample_dashboard)
 
     async def fake_post(
@@ -158,7 +170,9 @@ def test_update_dashboard_with_patches(monkeypatch: pytest.MonkeyPatch, sample_d
     monkeypatch.setattr(dashboard, "_get_dashboard", fake_get)
     monkeypatch.setattr(dashboard, "_post_dashboard", fake_post)
 
-    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace()))
+    ctx = SimpleNamespace(
+        request_context=SimpleNamespace(
+            session=SimpleNamespace()))
     operations = [
         {"op": "replace", "path": "title", "value": "Updated"},
         {"op": "add", "path": "panels/-", "value": {"id": 3}},
@@ -178,7 +192,8 @@ def test_update_dashboard_with_patches(monkeypatch: pytest.MonkeyPatch, sample_d
     # Test the new consolidated response structure from _post_dashboard
     assert result["status"] == "success"
     assert result["type"] == "dashboard_operation_result"
-    assert result["grafana_response"]["status"] == "ok"  # Original mock response
+    # Original mock response
+    assert result["grafana_response"]["status"] == "ok"
     assert captured["dashboard"]["title"] == "Updated"
     assert len(captured["dashboard"]["panels"]) == 3
     assert captured["folder"] == "folder"
@@ -189,7 +204,8 @@ def test_update_dashboard_with_structured_operations(
 ) -> None:
     captured: Dict[str, Any] = {}
 
-    async def fake_get(ctx: Any, uid: str, *, use_cache: bool = True) -> Dict[str, Any]:
+    async def fake_get(ctx: Any, uid: str, *
+    , use_cache: bool = True) -> Dict[str, Any]:
         return deepcopy(sample_dashboard)
 
     async def fake_post(
@@ -215,11 +231,22 @@ def test_update_dashboard_with_structured_operations(
     monkeypatch.setattr(dashboard, "_get_dashboard", fake_get)
     monkeypatch.setattr(dashboard, "_post_dashboard", fake_post)
 
-    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace()))
+    ctx = SimpleNamespace(
+        request_context=SimpleNamespace(
+            session=SimpleNamespace()))
     operations = [
-        dashboard.DashboardPatchOperation(op="replace", path="title", value="Updated"),
-        dashboard.DashboardPatchOperation(op="add", path="panels/-", value={"id": 3}),
-        dashboard.DashboardPatchOperation(op="remove", path="description"),
+        dashboard.DashboardPatchOperation(
+            op="replace",
+            path="title",
+            value="Updated"),
+        dashboard.DashboardPatchOperation(
+            op="add",
+            path="panels/-",
+            value={
+                "id": 3}),
+        dashboard.DashboardPatchOperation(
+            op="remove",
+            path="description"),
     ]
 
     result = asyncio.run(
@@ -235,10 +262,12 @@ def test_update_dashboard_with_structured_operations(
     # Test the new consolidated response structure from _post_dashboard
     assert result["status"] == "success"
     assert result["type"] == "dashboard_operation_result"
-    assert result["grafana_response"]["status"] == "ok"  # Original mock response
+    # Original mock response
+    assert result["grafana_response"]["status"] == "ok"
     assert captured["dashboard"]["title"] == "Updated"
     assert len(captured["dashboard"]["panels"]) == 3
     assert captured["folder"] == "folder"
+
 
 def test_apply_dashboard_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DASH_UID", "custom-uid")
@@ -254,7 +283,9 @@ def test_apply_dashboard_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert payload["panels"][0]["datasource"]["uid"] == "prom-default"
     assert payload["panels"][1]["datasource"]["uid"] == "prom-default"
 
-def test_update_dashboard_full(monkeypatch: pytest.MonkeyPatch, sample_dashboard: Dict[str, Any]) -> None:
+
+def test_update_dashboard_full(
+        monkeypatch: pytest.MonkeyPatch, sample_dashboard: Dict[str, Any]) -> None:
     captured: Dict[str, Any] = {}
 
     async def fake_post(
@@ -276,7 +307,9 @@ def test_update_dashboard_full(monkeypatch: pytest.MonkeyPatch, sample_dashboard
         }
 
     monkeypatch.setattr(dashboard, "_post_dashboard", fake_post)
-    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace()))
+    ctx = SimpleNamespace(
+        request_context=SimpleNamespace(
+            session=SimpleNamespace()))
 
     result = asyncio.run(
         dashboard._update_dashboard(
@@ -293,20 +326,37 @@ def test_update_dashboard_full(monkeypatch: pytest.MonkeyPatch, sample_dashboard
     # Test the new consolidated response structure from _post_dashboard
     assert result["status"] == "success"
     assert result["type"] == "dashboard_operation_result"
-    assert result["grafana_response"]["status"] == "ok"  # Original mock response
+    # Original mock response
+    assert result["grafana_response"]["status"] == "ok"
     assert captured["folder"] == "custom"
     assert captured["overwrite"] is True
 
     with pytest.raises(ValueError):
-        asyncio.run(dashboard._update_dashboard(ctx, None, None, None, None, None, False, None))
+        asyncio.run(
+            dashboard._update_dashboard(
+                ctx,
+                None,
+                None,
+                None,
+                None,
+                None,
+                False,
+                None))
 
 
 def test_post_dashboard_conflict(monkeypatch: pytest.MonkeyPatch) -> None:
     config = SimpleNamespace()
-    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace()))
+    ctx = SimpleNamespace(
+        request_context=SimpleNamespace(
+            session=SimpleNamespace()))
 
     class DummyClient:
-        async def post_json(self, path: str, json: Dict[str, Any], params=None, headers=None):
+        async def post_json(self,
+                            path: str,
+                            json: Dict[str,
+                                       Any],
+                            params=None,
+                            headers=None):
             raise dashboard.GrafanaAPIError(412, '{"status":"name-exists"}')
 
     monkeypatch.setattr(dashboard, "get_grafana_config", lambda _: config)
@@ -326,12 +376,16 @@ def test_post_dashboard_conflict(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "overwrite" in str(excinfo.value)
 
 
-def test_get_panel_queries(sample_dashboard: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
-    async def fake_get(ctx: Any, uid: str, *, use_cache: bool = True) -> Dict[str, Any]:
+def test_get_panel_queries(
+        sample_dashboard: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_get(ctx: Any, uid: str, *
+    , use_cache: bool = True) -> Dict[str, Any]:
         return sample_dashboard
 
     monkeypatch.setattr(dashboard, "_get_dashboard", fake_get)
-    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace()))
+    ctx = SimpleNamespace(
+        request_context=SimpleNamespace(
+            session=SimpleNamespace()))
     queries = asyncio.run(dashboard._get_panel_queries(ctx, "uid123"))
     assert queries[0]["datasource"]["uid"] == "ds1"
 
@@ -348,12 +402,17 @@ def test_dashboard_tools_require_context() -> None:
     assert "get_dashboard_by_uid" in tool_names
     tool_map = {tool.name: tool for tool in asyncio.run(app.list_tools())}
     with pytest.raises(ValueError):
-        asyncio.run(tool_map["get_dashboard_by_uid"].function(uid="uid", ctx=None))
+        asyncio.run(
+            tool_map["get_dashboard_by_uid"].function(
+                uid="uid", ctx=None))
 
 
-def test_dashboard_tool_functions_execute(dashboard_tools: tuple[Dict[str, Any], DummyDashboardClient, SimpleNamespace]) -> None:
+def test_dashboard_tool_functions_execute(
+        dashboard_tools: tuple[Dict[str, Any], DummyDashboardClient, SimpleNamespace]) -> None:
     tools, client, ctx = dashboard_tools
-    result = asyncio.run(tools["get_dashboard_by_uid"].function(uid="abc", ctx=ctx))
+    result = asyncio.run(
+        tools["get_dashboard_by_uid"].function(
+            uid="abc", ctx=ctx))
     assert result["dashboard"]["title"] == "Example"
 
     update_result = asyncio.run(
@@ -368,15 +427,22 @@ def test_dashboard_tool_functions_execute(dashboard_tools: tuple[Dict[str, Any],
     assert update_result["dashboard"]["title"] == "New"
     assert update_result["type"] == "dashboard_operation_result"
     assert "grafana_response" in update_result
-    assert update_result["grafana_response"]["status"] == "ok"  # Original Grafana response
+    # Original Grafana response
+    assert update_result["grafana_response"]["status"] == "ok"
 
-    summary = asyncio.run(tools["get_dashboard_summary"].function(uid="abc", ctx=ctx))
+    summary = asyncio.run(
+        tools["get_dashboard_summary"].function(
+            uid="abc", ctx=ctx))
     assert summary["panelCount"] == 2
 
-    property_value = asyncio.run(tools["get_dashboard_property"].function(uid="abc", jsonPath="panels[0].title", ctx=ctx))
+    property_value = asyncio.run(
+        tools["get_dashboard_property"].function(
+            uid="abc", jsonPath="panels[0].title", ctx=ctx))
     assert property_value == "CPU"
 
-    queries = asyncio.run(tools["get_dashboard_panel_queries"].function(uid="abc", ctx=ctx))
+    queries = asyncio.run(
+        tools["get_dashboard_panel_queries"].function(
+            uid="abc", ctx=ctx))
     assert queries[0]["query"] == "sum(rate(http_requests_total[5m]))"
 
     operations = [{"op": "replace", "path": "title", "value": "Updated"}]
@@ -390,12 +456,17 @@ def test_dashboard_tool_functions_execute(dashboard_tools: tuple[Dict[str, Any],
     assert client.post_calls
 
 
-def test_dashboard_cache_reuse(dashboard_tools: tuple[Dict[str, Any], DummyDashboardClient, SimpleNamespace]) -> None:
+def test_dashboard_cache_reuse(
+        dashboard_tools: tuple[Dict[str, Any], DummyDashboardClient, SimpleNamespace]) -> None:
     tools, client, ctx = dashboard_tools
     asyncio.run(tools["get_dashboard_by_uid"].function(uid="abc", ctx=ctx))
     initial_fetches = len(client.get_calls)
     asyncio.run(tools["get_dashboard_summary"].function(uid="abc", ctx=ctx))
     assert len(client.get_calls) == initial_fetches
 
-    asyncio.run(tools["get_dashboard_by_uid"].function(uid="abc", forceRefresh=True, ctx=ctx))
+    asyncio.run(
+        tools["get_dashboard_by_uid"].function(
+            uid="abc",
+            forceRefresh=True,
+            ctx=ctx))
     assert len(client.get_calls) == initial_fetches + 1

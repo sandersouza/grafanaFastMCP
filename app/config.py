@@ -135,7 +135,8 @@ def _decode_basic_auth(value: str) -> Optional[Tuple[str, str]]:
     return username, password
 
 
-def _extract_basic_auth(headers: Mapping[str, str]) -> Optional[Tuple[str, str]]:
+def _extract_basic_auth(
+        headers: Mapping[str, str]) -> Optional[Tuple[str, str]]:
     auth = headers.get(AUTHORIZATION_HEADER)
     if not auth:
         return None
@@ -154,20 +155,26 @@ def _extract_bearer_token(headers: Mapping[str, str]) -> str:
 
 def grafana_config_from_headers(headers: Mapping[str, str]) -> GrafanaConfig:
     env_config = grafana_config_from_env()
-    lowered: MutableMapping[str, str] = {k.lower(): v for k, v in headers.items()}
+    lowered: MutableMapping[str, str] = {
+        k.lower(): v for k, v in headers.items()}
 
     url = lowered.get(GRAFANA_URL_HEADER, env_config.url)
     url = _sanitize_url(url) if url else env_config.url
 
-    api_key = lowered.get(GRAFANA_API_KEY_HEADER, "").strip() or env_config.api_key
+    api_key = lowered.get(
+        GRAFANA_API_KEY_HEADER,
+        "").strip() or env_config.api_key
 
     basic_auth = _extract_basic_auth(lowered) or env_config.basic_auth
 
     access_token = lowered.get(GRAFANA_ACCESS_TOKEN_HEADER, "").strip()
     if not access_token:
-        access_token = env_config.access_token or _extract_bearer_token(lowered)
+        access_token = env_config.access_token or _extract_bearer_token(
+            lowered)
 
-    id_token = lowered.get(GRAFANA_ID_HEADER, "").strip() or env_config.id_token
+    id_token = lowered.get(
+        GRAFANA_ID_HEADER,
+        "").strip() or env_config.id_token
 
     return GrafanaConfig(
         url=url or DEFAULT_GRAFANA_URL,

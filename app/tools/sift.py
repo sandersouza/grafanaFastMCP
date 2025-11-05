@@ -15,7 +15,8 @@ from ..grafana_client import GrafanaClient
 
 _BASE_PATH = "/plugins/grafana-ml-app/resources/sift/api/v1"
 
-_DURATION_RE = re.compile(r"(?P<value>\d+(?:\.\d+)?)(?P<unit>ns|us|µs|ms|s|m|h|d)")
+_DURATION_RE = re.compile(
+    r"(?P<value>\d+(?:\.\d+)?)(?P<unit>ns|us|µs|ms|s|m|h|d)")
 _UNIT_SECONDS = {
     "ns": 1e-9,
     "us": 1e-6,
@@ -32,7 +33,9 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _time_range(start: Optional[datetime], end: Optional[datetime]) -> tuple[datetime, datetime]:
+def _time_range(start: Optional[datetime],
+                end: Optional[datetime]) -> tuple[datetime,
+                                                  datetime]:
     end_dt = end or _now()
     start_dt = start or end_dt - timedelta(minutes=30)
     if start_dt >= end_dt:
@@ -64,12 +67,14 @@ async def _sift_get_json(
     return payload
 
 
-async def _get_investigation(ctx: Context, investigation_id: str) -> Dict[str, Any]:
+async def _get_investigation(
+        ctx: Context, investigation_id: str) -> Dict[str, Any]:
     payload = await _sift_get_json(ctx, f"/investigations/{investigation_id}")
     return payload.get("data") or payload
 
 
-async def _get_analyses(ctx: Context, investigation_id: str) -> List[Dict[str, Any]]:
+async def _get_analyses(
+        ctx: Context, investigation_id: str) -> List[Dict[str, Any]]:
     payload = await _sift_get_json(ctx, f"/investigations/{investigation_id}/analyses")
     data = payload.get("data")
     if isinstance(data, list):
@@ -77,7 +82,8 @@ async def _get_analyses(ctx: Context, investigation_id: str) -> List[Dict[str, A
     return []
 
 
-async def _list_investigations(ctx: Context, limit: Optional[int]) -> List[Dict[str, Any]]:
+async def _list_investigations(
+        ctx: Context, limit: Optional[int]) -> List[Dict[str, Any]]:
     params = {"limit": limit or 10}
     payload = await _sift_get_json(ctx, "/investigations", params=params)
     data = payload.get("data")
@@ -114,7 +120,8 @@ async def _create_investigation(
     return created
 
 
-async def _wait_for_completion(ctx: Context, investigation_id: str) -> Dict[str, Any]:
+async def _wait_for_completion(
+        ctx: Context, investigation_id: str) -> Dict[str, Any]:
     deadline = _now() + timedelta(minutes=5)
     while True:
         investigation = await _get_investigation(ctx, investigation_id)
@@ -124,11 +131,13 @@ async def _wait_for_completion(ctx: Context, investigation_id: str) -> Dict[str,
         if status.lower() == "failed":
             raise ValueError("Sift investigation failed")
         if _now() > deadline:
-            raise TimeoutError("Timed out waiting for Sift investigation to finish")
+            raise TimeoutError(
+                "Timed out waiting for Sift investigation to finish")
         await asyncio.sleep(5)
 
 
-def _find_analysis(analyses: List[Dict[str, Any]], name: str) -> Dict[str, Any]:
+def _find_analysis(analyses: List[Dict[str, Any]],
+                   name: str) -> Dict[str, Any]:
     for analysis in analyses:
         if str(analysis.get("name", "")) == name:
             return analysis
@@ -150,14 +159,16 @@ def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
         sign = -1 if lowered.startswith("now-") else 1
         duration_expr = cleaned[4:]
         if not duration_expr:
-            raise ValueError("Relative time expressions must include a duration (e.g. now-5m)")
+            raise ValueError(
+                "Relative time expressions must include a duration (e.g. now-5m)")
         total_seconds = 0.0
         for match in _DURATION_RE.finditer(duration_expr):
             unit = match.group("unit")
             factor = _UNIT_SECONDS[unit]
             total_seconds += float(match.group("value")) * factor
         if total_seconds == 0.0:
-            raise ValueError(f"Unable to parse duration expression '{duration_expr}'")
+            raise ValueError(
+                f"Unable to parse duration expression '{duration_expr}'")
         delta = timedelta(seconds=total_seconds)
         return reference + (delta if sign > 0 else -delta)
 
@@ -199,7 +210,8 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> Dict[str, Any]:
         if ctx is None:
-            raise ValueError("Context injection failed for get_sift_investigation")
+            raise ValueError(
+                "Context injection failed for get_sift_investigation")
         return await _get_investigation(ctx, investigationId)
 
     @app.tool(
@@ -230,7 +242,8 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> List[Dict[str, Any]]:
         if ctx is None:
-            raise ValueError("Context injection failed for list_sift_investigations")
+            raise ValueError(
+                "Context injection failed for list_sift_investigations")
         return await _list_investigations(ctx, limit)
 
     @app.tool(
@@ -246,7 +259,8 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> Dict[str, Any]:
         if ctx is None:
-            raise ValueError("Context injection failed for find_error_pattern_logs")
+            raise ValueError(
+                "Context injection failed for find_error_pattern_logs")
         return await _run_check(
             ctx,
             "ErrorPatternLogs",

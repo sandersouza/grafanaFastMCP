@@ -26,7 +26,10 @@ def dummy_ctx(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     config = SimpleNamespace(url="https://grafana.local")
     monkeypatch.setattr(admin, "get_grafana_config", lambda _: config)
     monkeypatch.setattr(admin, "GrafanaClient", DummyClient)
-    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace(), request=None))
+    ctx = SimpleNamespace(
+        request_context=SimpleNamespace(
+            session=SimpleNamespace(),
+            request=None))
     return ctx
 
 

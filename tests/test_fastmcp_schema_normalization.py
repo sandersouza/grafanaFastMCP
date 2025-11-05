@@ -59,8 +59,20 @@ def test_schema_build_and_normalize_covers_edge_cases() -> None:
 
     assert norm["type"] == "object"
     props = norm["properties"]
-    # Required should include all non-default, non-variadic parameters (excluding ctx)
-    assert set(norm["required"]) >= {"a_str", "a_int", "a_num", "a_bool", "a_list_any", "a_list_str", "a_seq_union", "a_map_any", "a_mapping", "a_optional"}
+    # Required should include all non-default, non-variadic parameters
+    # (excluding ctx)
+    assert set(
+        norm["required"]) >= {
+        "a_str",
+        "a_int",
+        "a_num",
+        "a_bool",
+        "a_list_any",
+        "a_list_str",
+        "a_seq_union",
+        "a_map_any",
+        "a_mapping",
+        "a_optional"}
 
     # Arrays always have an items schema (fallback if missing)
     assert props["a_list_any"]["type"] == "array"

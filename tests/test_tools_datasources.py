@@ -22,12 +22,16 @@ class DummyClient:
 
 
 @pytest.fixture
-def setup_datasources(monkeypatch: pytest.MonkeyPatch) -> tuple[SimpleNamespace, DummyClient]:
+def setup_datasources(
+        monkeypatch: pytest.MonkeyPatch) -> tuple[SimpleNamespace, DummyClient]:
     config = SimpleNamespace(url="https://grafana.local")
     client = DummyClient()
     monkeypatch.setattr(datasources, "get_grafana_config", lambda _: config)
     monkeypatch.setattr(datasources, "GrafanaClient", lambda cfg: client)
-    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace(), request=None))
+    ctx = SimpleNamespace(
+        request_context=SimpleNamespace(
+            session=SimpleNamespace(),
+            request=None))
     return ctx, client
 
 
@@ -54,7 +58,8 @@ def test_list_datasources_returns_summaries(setup_datasources) -> None:
     assert client.calls == [("/datasources", None)]
 
 
-def test_list_datasources_rejects_unexpected_payload(setup_datasources) -> None:
+def test_list_datasources_rejects_unexpected_payload(
+        setup_datasources) -> None:
     ctx, client = setup_datasources
     client.payload = {"not": "a list"}
     with pytest.raises(ValueError):

@@ -1,0 +1,11 @@
+{
+  "github.copilot.chat.instructions": "Leia e siga COPILOT.md (na raiz do repositório).",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+
+  // Régua visual a 132 colunas
+  "editor.rulers": [132],
+
+  // PyENV toolbar icon workaround
+  "python.useEnvironmentsExtension": true
+}

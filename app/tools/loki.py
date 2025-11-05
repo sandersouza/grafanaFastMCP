@@ -46,16 +46,19 @@ class LokiClient:
         tls = self._config.tls_config
         self._verify = tls.resolve_verify() if tls else True
         self._cert = tls.resolve_cert() if tls else None
-        self._auth = httpx.BasicAuth(*self._config.basic_auth) if self._config.basic_auth else None
+        self._auth = httpx.BasicAuth(
+            *self._config.basic_auth) if self._config.basic_auth else None
         self._headers = {"User-Agent": USER_AGENT}
         if self._config.api_key:
             self._headers["Authorization"] = f"Bearer {self._config.api_key}"
         if self._config.access_token and self._config.id_token:
-            self._headers.setdefault("X-Access-Token", self._config.access_token)
+            self._headers.setdefault(
+                "X-Access-Token", self._config.access_token)
             self._headers.setdefault("X-Grafana-Id", self._config.id_token)
 
     async def request(self, path: str, *, params: Optional[Dict[str, Any]] = None) -> httpx.Response:
-        url = f"{self._base_url}{path}" if path.startswith("/") else f"{self._base_url}/{path}"
+        url = f"{self._base_url}{path}" if path.startswith(
+            "/") else f"{self._base_url}/{path}"
         async with httpx.AsyncClient(
             timeout=_DEFAULT_TIMEOUT,
             verify=self._verify,
@@ -77,7 +80,8 @@ class LokiClient:
         try:
             return response.json()
         except json.JSONDecodeError as exc:
-            raise ValueError(f"Failed to parse Loki response: {content[:256]}") from exc
+            raise ValueError(
+                f"Failed to parse Loki response: {content[:256]}") from exc
 
 
 async def _ensure_datasource(ctx: Context, uid: str) -> None:
@@ -151,7 +155,8 @@ def _format_log_entries(streams: Iterable[Any]) -> List[Dict[str, Any]]:
     for stream in streams:
         if not isinstance(stream, dict):
             continue
-        labels = stream.get("stream") if isinstance(stream.get("stream"), dict) else {}
+        labels = stream.get("stream") if isinstance(
+            stream.get("stream"), dict) else {}
         values = stream.get("values")
         if not isinstance(values, list):
             continue
@@ -218,7 +223,8 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> Any:
         if ctx is None:
-            raise ValueError("Context injection failed for list_loki_label_names")
+            raise ValueError(
+                "Context injection failed for list_loki_label_names")
         labels = await _list_label_items(ctx, datasourceUid, "/loki/api/v1/labels", startRfc3339, endRfc3339)
         return {
             "labels": labels,
@@ -245,7 +251,8 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> Any:
         if ctx is None:
-            raise ValueError("Context injection failed for list_loki_label_values")
+            raise ValueError(
+                "Context injection failed for list_loki_label_values")
         path = f"/loki/api/v1/label/{labelName}/values"
         values = await _list_label_items(ctx, datasourceUid, path, startRfc3339, endRfc3339)
         return {

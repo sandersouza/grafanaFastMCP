@@ -12,7 +12,10 @@ from app.tools.availability import GrafanaCapabilities
 from mcp.server.fastmcp import FastMCP
 
 
-def _capabilities_with(*, datasource_types: set[str], plugin_ids: set[str]) -> GrafanaCapabilities:
+def _capabilities_with(
+    *,
+    datasource_types: set[str],
+        plugin_ids: set[str]) -> GrafanaCapabilities:
     return GrafanaCapabilities(
         datasource_types=frozenset(datasource_types),
         plugin_ids=frozenset(plugin_ids),
@@ -24,11 +27,12 @@ def _tool_names(app: FastMCP) -> set[str]:
     return {tool.name for tool in registered}
 
 
-def test_register_all_skips_loki_without_datasource(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_register_all_skips_loki_without_datasource(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     capabilities = _capabilities_with(
-        datasource_types={"prometheus", "pyroscope"},
-        plugin_ids={"grafana-irm-app", "grafana-asserts-app", "grafana-ml-app"},
-    )
+        datasource_types={
+            "prometheus", "pyroscope"}, plugin_ids={
+            "grafana-irm-app", "grafana-asserts-app", "grafana-ml-app"}, )
     monkeypatch.setattr(tools, "_resolve_capabilities", lambda: capabilities)
 
     app = FastMCP()
@@ -39,7 +43,8 @@ def test_register_all_skips_loki_without_datasource(monkeypatch: pytest.MonkeyPa
     assert "search" in names
 
 
-def test_register_all_skips_oncall_without_plugin(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_register_all_skips_oncall_without_plugin(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     capabilities = _capabilities_with(
         datasource_types={"loki", "prometheus", "pyroscope"},
         plugin_ids={"grafana-ml-app"},
@@ -55,11 +60,12 @@ def test_register_all_skips_oncall_without_plugin(monkeypatch: pytest.MonkeyPatc
     assert "search" in names
 
 
-def test_all_tools_define_array_item_schemas(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_all_tools_define_array_item_schemas(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     capabilities = _capabilities_with(
-        datasource_types={"loki", "prometheus", "pyroscope"},
-        plugin_ids={"grafana-irm-app", "grafana-asserts-app", "grafana-ml-app"},
-    )
+        datasource_types={
+            "loki", "prometheus", "pyroscope"}, plugin_ids={
+            "grafana-irm-app", "grafana-asserts-app", "grafana-ml-app"}, )
     monkeypatch.setattr(tools, "_resolve_capabilities", lambda: capabilities)
 
     app = FastMCP()

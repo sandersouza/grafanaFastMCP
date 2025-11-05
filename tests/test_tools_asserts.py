@@ -19,7 +19,16 @@ def _now_ms() -> int:
 
 def test_parse_time_accepts_iso_strings() -> None:
     timestamp = _parse_time("2024-01-02T03:04:05+00:00", "startTime")
-    assert timestamp == int(datetime(2024, 1, 2, 3, 4, 5, tzinfo=timezone.utc).timestamp() * 1000)
+    assert timestamp == int(
+        datetime(
+            2024,
+            1,
+            2,
+            3,
+            4,
+            5,
+            tzinfo=timezone.utc).timestamp() *
+        1000)
 
 
 def test_parse_time_accepts_relative_now() -> None:
@@ -38,7 +47,8 @@ def test_parse_time_accepts_now_minus_duration() -> None:
 
 def test_parse_time_accepts_combined_offsets() -> None:
     result = _parse_time("now-1h+30m", "startTime")
-    expected = datetime.now(timezone.utc) - timedelta(hours=1) + timedelta(minutes=30)
+    expected = datetime.now(timezone.utc) - \
+        timedelta(hours=1) + timedelta(minutes=30)
     assert abs(result - int(expected.timestamp() * 1000)) < 5000
 
 
@@ -62,7 +72,8 @@ def test_parse_time_rejects_invalid_isoformat() -> None:
         _parse_time("invalid", "startTime")
 
 
-def test_get_assertions_builds_request(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_assertions_builds_request(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, object] = {}
 
     class DummyClient:
@@ -78,7 +89,10 @@ def test_get_assertions_builds_request(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(asserts_module, "get_grafana_config", lambda _: config)
     monkeypatch.setattr(asserts_module, "GrafanaClient", DummyClient)
 
-    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace(), request=None))
+    ctx = SimpleNamespace(
+        request_context=SimpleNamespace(
+            session=SimpleNamespace(),
+            request=None))
     args = {
         "startTime": "now-10m",
         "endTime": "now",
@@ -95,10 +109,12 @@ def test_get_assertions_builds_request(monkeypatch: pytest.MonkeyPatch) -> None:
     assert payload["entityKeys"][0]["scope"]["env"] == "prod"
 
 
-def test_get_assertions_tool_requires_context(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_assertions_tool_requires_context(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     app = FastMCP()
     asserts_module.register(app)
-    tool = next(tool for tool in asyncio.run(app.list_tools()) if tool.name == "get_assertions")
+    tool = next(tool for tool in asyncio.run(app.list_tools())
+                if tool.name == "get_assertions")
     with pytest.raises(ValueError):
         asyncio.run(tool.function(
             startTime="now",

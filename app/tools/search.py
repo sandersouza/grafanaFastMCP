@@ -99,7 +99,8 @@ def _resolve_dashboard_lookup(
                 if not candidate_uid:
                     candidate_uid = _normalize_identifier(entry.get("uid"))
                 if not candidate_numeric_id:
-                    candidate_numeric_id = _normalize_identifier(entry.get("id"))
+                    candidate_numeric_id = _normalize_identifier(
+                        entry.get("id"))
                 if not candidate_url:
                     entry_url = entry.get("url") or entry.get("uri")
                     if isinstance(entry_url, str):
@@ -137,7 +138,8 @@ async def _fetch_dashboard(
         return await client.get_json(f"/dashboards/uid/{uid}")
     if numeric_id:
         return await client.get_json(f"/dashboards/id/{numeric_id}")
-    raise ValueError("A dashboard UID or ID is required to fetch dashboard details")
+    raise ValueError(
+        "A dashboard UID or ID is required to fetch dashboard details")
 
 
 async def _fetch_resource(
@@ -168,7 +170,8 @@ async def _fetch_resource(
             item=item,
         )
         if not resolved_uid and not resolved_numeric_id:
-            raise ValueError("An UID, numeric ID, or URL is required to fetch dashboard details")
+            raise ValueError(
+                "An UID, numeric ID, or URL is required to fetch dashboard details")
         return await _fetch_dashboard(client, uid=resolved_uid, numeric_id=resolved_numeric_id)
 
     raise ValueError(f"Unsupported resource type '{resolved_type}' for fetch")
@@ -177,16 +180,16 @@ async def _fetch_resource(
 async def _search_dashboards(query: Optional[str], ctx: Context) -> Any:
     """
     Search for Grafana dashboards and return a consolidated response.
-    
+
     This function wraps the raw Grafana search API response in a structured object
     to prevent JSON chunking issues when used with streamable HTTP transport
     alongside ChatGPT/OpenAI. Instead of returning the raw array from Grafana's
     /search endpoint, we return a consolidated object with metadata.
-    
+
     Args:
         query: Optional search query string
         ctx: MCP context for configuration
-        
+
     Returns:
         Dict containing:
         - dashboards: List of dashboard objects from Grafana API
@@ -229,14 +232,10 @@ def register(app: FastMCP) -> None:
     """Register search-related tools."""
 
     @app.tool(
-        name="search_dashboards",
-        title="Search dashboards",
-        description=(
+        name="search_dashboards", title="Search dashboards", description=(
             "Search Grafana dashboards by a query string. Returns a consolidated response object "
             "containing matching dashboards, total count, query, and metadata. "
-            "This format prevents JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
-        ),
-    )
+            "This format prevents JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."), )
     async def search_dashboards(
         query: str,
         ctx: Optional[Context] = None,
@@ -247,14 +246,10 @@ def register(app: FastMCP) -> None:
         return await _search_dashboards(normalized_query, ctx)
 
     @app.tool(
-        name="search",
-        title="Search Grafana",
-        description=(
+        name="search", title="Search Grafana", description=(
             "General purpose search endpoint used by MCP clients. Returns a consolidated response "
             "object containing matching dashboard metadata, total count, and query info. "
-            "This format prevents JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
-        ),
-    )
+            "This format prevents JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."), )
     async def search(
         query: str,
         ctx: Optional[Context] = None,
@@ -265,13 +260,9 @@ def register(app: FastMCP) -> None:
         return await _search_dashboards(normalized_query, ctx)
 
     @app.tool(
-        name="fetch",
-        title="Fetch Grafana resource",
-        description=(
+        name="fetch", title="Fetch Grafana resource", description=(
             "Retrieve detailed Grafana resource data using identifiers returned by search results. "
-            "Currently supports dashboards via UID, numeric ID, or dashboard URLs."
-        ),
-    )
+            "Currently supports dashboards via UID, numeric ID, or dashboard URLs."), )
     async def fetch(
         *,
         id: str,
