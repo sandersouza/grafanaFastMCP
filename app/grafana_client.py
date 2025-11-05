@@ -79,7 +79,16 @@ class GrafanaClient:
         return None
 
     def _absolute_url(self, path: str) -> str:
+        # Normalize the incoming path to avoid duplicating the '/api' segment.
+        # Callers sometimes pass paths starting with '/api/...' (for example
+        # '/api/health'). Since _build_api_base_url already ensures the base
+        # URL ends with '/api', strip a leading '/api' from the provided path
+        # to prevent requests like '.../api/api/health'.
         path = path or ""
+        if path.startswith("/api/"):
+            path = path[len("/api/"):]
+        elif path == "/api":
+            path = ""
         return urljoin(self._base_url + "/", path.lstrip("/"))
 
     async def request(
@@ -90,6 +99,7 @@ class GrafanaClient:
         params: Optional[Mapping[str, Any]] = None,
         json: Any = None,
         headers: Optional[Mapping[str, str]] = None,
+        timeout: Optional[float | httpx.Timeout] = None,
     ) -> httpx.Response:
         url = self._absolute_url(path)
         combined_headers = self._headers(headers)
@@ -98,8 +108,14 @@ class GrafanaClient:
             extra={
                 "method": method,
                 "url": url})
+        # Allow callers to pass a short timeout for quick startup checks.
+        if timeout is None:
+            client_timeout = _DEFAULT_TIMEOUT
+        else:
+            client_timeout = timeout if isinstance(timeout, httpx.Timeout) else httpx.Timeout(timeout)
+
         async with httpx.AsyncClient(
-            timeout=_DEFAULT_TIMEOUT,
+            timeout=client_timeout,
             verify=self._verify,
             cert=self._cert,
             auth=self._auth(),
@@ -118,8 +134,14 @@ class GrafanaClient:
             raise GrafanaAPIError(response.status_code, body)
         return response
 
-    async def get_json(self, path: str, *, params: Optional[Mapping[str, Any]] = None) -> Any:
-        response = await self.request("GET", path, params=params)
+    async def get_json(
+        self,
+        path: str,
+        *,
+        params: Optional[Mapping[str, Any]] = None,
+        timeout: Optional[float | httpx.Timeout] = None,
+    ) -> Any:
+        response = await self.request("GET", path, params=params, timeout=timeout)
         return response.json()
 
     async def post_json(

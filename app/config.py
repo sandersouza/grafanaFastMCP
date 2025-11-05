@@ -19,6 +19,10 @@ GRAFANA_USERNAME_ENV = "GRAFANA_USERNAME"
 GRAFANA_PASSWORD_ENV = "GRAFANA_PASSWORD"
 GRAFANA_ACCESS_TOKEN_ENV = "GRAFANA_ACCESS_TOKEN"
 GRAFANA_ID_TOKEN_ENV = "GRAFANA_ID_TOKEN"
+GRAFANA_TLS_CERT_FILE_ENV = "GRAFANA_TLS_CERT_FILE"
+GRAFANA_TLS_KEY_FILE_ENV = "GRAFANA_TLS_KEY_FILE"
+GRAFANA_TLS_CA_FILE_ENV = "GRAFANA_TLS_CA_FILE"
+GRAFANA_TLS_SKIP_VERIFY_ENV = "GRAFANA_TLS_SKIP_VERIFY"
 
 GRAFANA_URL_HEADER = "x-grafana-url"
 GRAFANA_API_KEY_HEADER = "x-grafana-api-key"
@@ -111,6 +115,21 @@ def grafana_config_from_env() -> GrafanaConfig:
         access_token=access_token,
         id_token=id_token,
     )
+    # TLS configuration from environment
+    cert_file = os.getenv(GRAFANA_TLS_CERT_FILE_ENV, "").strip()
+    key_file = os.getenv(GRAFANA_TLS_KEY_FILE_ENV, "").strip()
+    ca_file = os.getenv(GRAFANA_TLS_CA_FILE_ENV, "").strip()
+    skip_verify_raw = os.getenv(GRAFANA_TLS_SKIP_VERIFY_ENV, "").strip().lower()
+    skip_verify = False
+    if skip_verify_raw in ("1", "true", "yes", "on"):
+        skip_verify = True
+    if cert_file or key_file or ca_file or skip_verify:
+        config.tls_config = TLSConfig(
+            cert_file=cert_file,
+            key_file=key_file,
+            ca_file=ca_file,
+            skip_verify=skip_verify,
+        )
     LOGGER.debug(
         "Final GrafanaConfig from environment",
         extra={
