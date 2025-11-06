@@ -1,6 +1,6 @@
 # Changelog
 Todas as mudanças notáveis deste projeto são registradas neste arquivo. Este formato segue as recomendações do "Keep a Changelog" e o projeto adota versionamento semântico (semver).
-## [v1.2.2] - 2025-11-05
+## [v1.2.3] - 2025-11-05
 ### 🚀 Adicionado / Corrigido
 - Validação de conexão ao Grafana no startup (reachability, TLS e autenticação).
 - Novas variáveis de ambiente para TLS/SSL:

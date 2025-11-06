@@ -317,12 +317,17 @@ def main(argv: list[str] | None = None) -> None:
                         logger.error("Grafana authentication failed (401): %s", exc.message)
                     print("Grafana startup check: FAILED (auth) - see logs for details")
                     return 2
-                # 403 = forbidden: for token-based auth (service account / api key)
-                # Grafana may return 403 even when the token is valid but lacks
-                # permissions for this endpoint. In that case, consider auth
-                # configured and continue with a warning.
-                if exc.status_code == 403 and (config.api_key or (config.access_token and config.id_token)):
-                    logger.warning("Grafana token authenticated but lacks permissions for /api/user (403)")
+                # 403 = forbidden or 404 = not found: for token-based auth
+                # (service account / api key) Grafana may return 403 or 404
+                # when the token is valid but the /api/user endpoint is not
+                # accessible for that token (or the user record is not found).
+                # Treat these as warning (auth configured) rather than fatal so
+                # service-account-style tokens don't cause startup to abort.
+                if exc.status_code in (403, 404) and (config.api_key or (config.access_token and config.id_token)):
+                    logger.warning(
+                        "Grafana token authenticated but lacks permissions or user not found for /api/user (%s)",
+                        exc.status_code,
+                    )
                 else:
                     if logger.isEnabledFor(logging.DEBUG):
                         logger.exception("Grafana authentication failed")
