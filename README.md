@@ -8,7 +8,7 @@
 ## Visão geral
 Python FastMCP Server / CLI ( OpenAI Compliance ), com suporte a transportes Server-Sent Events (SSE), Streamable HTTP e STDIO. A aplicação expõe recursos de uma instância Grafana para agentes compatíveis com o protocolo MCP, oferecendo operações para busca, criação e atualização de dashboards, exploração de logs via Loki, consulta de datasources, gestão de alertas, incidentes, turnos de on-call e acesso a dados de observabilidade (Prometheus, Pyroscope, Grafana Sift e muito mais).
 
-**🚀 NOVA VERSÃO v1.1.0**: Todas as tools agora utilizam **resposta consolidada** para eliminação total de problemas de chunking JSON em streamable HTTP com ChatGPT/OpenAI. Veja [CHANGELOG.md](./CHANGELOG.md) e [ISSUES.md](./ISSUES.md) para detalhes completos.
+**🚀 NOVA VERSÃO v1.2.3**: Esta release inclui melhorias nas checagens de inicialização (TLS/autenticação), suporte a variáveis TLS/SSL e flags CLI para troubleshooting rápido. Veja [CHANGELOG.md](./CHANGELOG.md) e [ISSUES.md](./ISSUES.md) para detalhes completos.
 
 ## Estrutura do projeto
 Todo o código-fonte fica no diretório `app/`, deixando a raiz do repositório reservada para arquivos de configuração (como `.env`, `Dockerfile`, `requirements.txt` e este `README`). A organização completa é:
@@ -116,6 +116,18 @@ A aplicação lê os parâmetros de conexão a partir de variáveis de ambiente,
 
 Defina as variáveis conforme o método de autenticação que estiver usando. Também é possível fornecer certificados TLS personalizados por meio da estrutura `TLSConfig` definida no módulo de configuração.
 
+TLS / SSL (novas variáveis)
+ - `GRAFANA_TLS_CERT_FILE`: caminho para certificado cliente (opcional)
+ - `GRAFANA_TLS_KEY_FILE`: caminho para chave do certificado (opcional)
+ - `GRAFANA_TLS_CA_FILE`: caminho para um bundle CA para validar o servidor Grafana (opcional)
+ - `GRAFANA_TLS_SKIP_VERIFY`: se `true` (ou `1`, `yes`), ignora a verificação do certificado TLS (útil para certificados auto-assinados; inseguro)
+
+Além das variáveis de ambiente, agora existem três flags CLI úteis:
+ - `--ignore-ssl`: equivalente a definir `GRAFANA_TLS_SKIP_VERIFY=true` — faz o cliente ignorar erros de certificado.
+ - `--check-connection`: executa uma verificação simples (`/api/health`) contra a instância Grafana e encerra com código 0 em sucesso ou 2 em falha. Útil para CI ou troubleshooting pré-execução.
+ - `--require-grafana`: quando fornecida, a aplicação executa um conjunto de checagens na inicialização — reachability/TLS via `/api/health`, validação de identidade do servidor, e verificação de autenticação via `/api/user` — e aborta o startup se algum passo falhar.
+ - `--require-grafana` (enabled by default): a aplicação executará um conjunto de checagens na inicialização (reachability/TLS via `/api/health`, validação de identidade do servidor, e verificação de autenticação via `/api/user`) e abortará a inicialização se alguma checagem falhar. Para desativar esse comportamento padrão, passe `--no-require-grafana`.
+
 ## Execução
 Após configurar o ambiente, execute o servidor MCP com:
 
@@ -136,6 +148,7 @@ Parâmetros úteis:
 - `--log-level`: nível de log (`DEBUG`, `INFO`, `WARNING`, etc.).
 - `--debug`: ativa modo de depuração do FastMCP.
 - `--version`: imprime a versão da aplicação e encerra.
+ - `--version`: imprime a versão da aplicação e encerra.
 - `--env-file`: caminho para um arquivo `.env` adicional a ser carregado antes da inicialização.
 
 O servidor registra automaticamente todas as ferramentas MCP descritas em `app/tools/` através da função `register_all`. Agentes MCP podem consumir as capacidades para listar datasources, atualizar dashboards, executar consultas no Loki e gerar links de navegação no Grafana, entre outras.
@@ -208,7 +221,7 @@ pip install pytest pytest-cov
 pytest --cov=. --cov-report term-missing
 ```
 
-A execução atual produz um resumo com cobertura global de aproximadamente **85%**, destacando pontos fortes como `app/config.py` (85%), `app/instructions.py` (93%) e `app/tools/search.py` (90%). A v1.1.0 introduziu testes abrangentes para todas as ferramentas corrigidas, melhorando significativamente a cobertura geral do projeto.
+A execução atual produz um resumo com cobertura global de aproximadamente **85%**, destacando pontos fortes como `app/config.py` (85%), `app/instructions.py` (93%) e `app/tools/search.py` (90%). Versões anteriores introduziram testes abrangentes para todas as ferramentas corrigidas, melhorando significativamente a cobertura geral do projeto.
 
 ## Ferramentas disponíveis
 
@@ -304,7 +317,7 @@ Esse fluxo permite que plataformas de IA ou agentes MCP recebam respostas em str
 ### Streamable HTTP
 Com `python -m app --transport streamable-http`, o servidor expõe um único endpoint HTTP compatível com o transporte Streamable HTTP do MCP. Por padrão, o caminho é `/mcp`, mas ele pode ser ajustado com `--streamable-http-path` (valores relativos respeitam o `--base-path`). Esse modo é útil para clientes que preferem uma API HTTP tradicional, mantendo suporte a respostas parciais via streaming.
 
-**🚀 Novo na v1.1.0**: Todas as tools agora retornam respostas consolidadas que eliminam problemas de chunking JSON, proporcionando:
+**🚀 Histórico — v1.1.0**: Todas as tools da v1.1.0 retornam respostas consolidadas que eliminam problemas de chunking JSON, proporcionando:
 - ✅ **Performance 90% melhor** em operações de listagem
 - ✅ **Zero timeouts** por fragmentação de resposta
 - ✅ **Sessões estáveis** sem perda de conexão

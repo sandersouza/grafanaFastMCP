@@ -30,12 +30,16 @@ class DummyClient:
 
 
 @pytest.fixture
-def ctx(monkeypatch: pytest.MonkeyPatch) -> tuple[SimpleNamespace, DummyClient]:
+def ctx(
+        monkeypatch: pytest.MonkeyPatch) -> tuple[SimpleNamespace, DummyClient]:
     config = SimpleNamespace(url="https://grafana.local")
     client = DummyClient()
     monkeypatch.setattr(alerting, "get_grafana_config", lambda _: config)
     monkeypatch.setattr(alerting, "GrafanaClient", lambda cfg: client)
-    ctx = SimpleNamespace(request_context=SimpleNamespace(session=SimpleNamespace(), request=None))
+    ctx = SimpleNamespace(
+        request_context=SimpleNamespace(
+            session=SimpleNamespace(),
+            request=None))
     return ctx, client
 
 
@@ -46,7 +50,7 @@ def test_parse_label_matchers_and_selectors() -> None:
     ]
     matchers = alerting._parse_label_matchers(raw_filters)
     assert len(matchers) == 2
-    selectors = alerting._parse_label_selectors([{ "filters": raw_filters }])
+    selectors = alerting._parse_label_selectors([{"filters": raw_filters}])
     assert len(selectors) == 1
     assert selectors[0].matches({"job": "api", "env": "stage"}) is True
 
@@ -56,7 +60,8 @@ def test_parse_label_matchers_and_selectors() -> None:
         alerting._parse_label_selectors([{"filters": "invalid"}])
 
 
-def test_fetch_alert_rules_and_filtering(ctx: tuple[SimpleNamespace, DummyClient]) -> None:
+def test_fetch_alert_rules_and_filtering(
+        ctx: tuple[SimpleNamespace, DummyClient]) -> None:
     ctx_obj, client = ctx
     client.responses["/prometheus/grafana/api/v1/rules"] = {
         "data": {
@@ -72,7 +77,8 @@ def test_fetch_alert_rules_and_filtering(ctx: tuple[SimpleNamespace, DummyClient
     }
     selectors = [LabelMatcher(name="job", value="api")]
     rules = asyncio.run(alerting._fetch_alert_rules(client))
-    filtered = alerting._filter_rules_by_selectors(rules, [alerting.Selector(selectors)])
+    filtered = alerting._filter_rules_by_selectors(
+        rules, [alerting.Selector(selectors)])
     assert filtered == [rules[0]]
 
     paged = alerting._apply_pagination(filtered, limit=1, page=1)
@@ -83,33 +89,44 @@ def test_fetch_alert_rules_and_filtering(ctx: tuple[SimpleNamespace, DummyClient
     summarized = [alerting._summarize_alert_rule(rule) for rule in filtered]
     assert summarized[0]["uid"] == "1"
 
-    listing = asyncio.run(alerting._list_alert_rules(ctx_obj, limit=1, page=1, label_selectors=[{"filters": [{"name": "job", "value": "api"}]}]))
+    listing = asyncio.run(alerting._list_alert_rules(ctx_obj, limit=1, page=1, label_selectors=[
+                          {"filters": [{"name": "job", "value": "api"}]}]))
     assert listing[0]["title"] == "Rule A"
 
 
-def test_get_alert_rule_handles_404(monkeypatch: pytest.MonkeyPatch, ctx: tuple[SimpleNamespace, DummyClient]) -> None:
+def test_get_alert_rule_handles_404(
+        monkeypatch: pytest.MonkeyPatch, ctx: tuple[SimpleNamespace, DummyClient]) -> None:
     ctx_obj, client = ctx
-    client.responses["/v1/provisioning/alert-rules/rule"] = GrafanaAPIError(404, "not found")
+    client.responses["/v1/provisioning/alert-rules/rule"] = GrafanaAPIError(
+        404, "not found")
     with pytest.raises(ValueError):
         asyncio.run(alerting._get_alert_rule(ctx_obj, "rule"))
 
 
-def test_list_contact_points_and_validation(ctx: tuple[SimpleNamespace, DummyClient]) -> None:
+def test_list_contact_points_and_validation(
+        ctx: tuple[SimpleNamespace, DummyClient]) -> None:
     ctx_obj, client = ctx
     client.responses["/v1/provisioning/contact-points"] = [
         {"uid": "1", "name": "Email", "type": "email"},
         {"uid": "2", "name": "Pager", "type": "pagerduty"},
     ]
-    result = asyncio.run(alerting._list_contact_points(ctx_obj, limit=1, name="Email"))
+    result = asyncio.run(
+        alerting._list_contact_points(
+            ctx_obj, limit=1, name="Email"))
     assert result == [{"uid": "1", "name": "Email", "type": "email"}]
     with pytest.raises(ValueError):
-        asyncio.run(alerting._list_contact_points(ctx_obj, limit=-1, name=None))
+        asyncio.run(
+            alerting._list_contact_points(
+                ctx_obj,
+                limit=-1,
+                name=None))
 
 
 def test_alerting_tools_require_context() -> None:
     app = FastMCP()
     alerting.register(app)
     tools = asyncio.run(app.list_tools())
-    no_ctx_tool = next(tool for tool in tools if tool.name == "list_alert_rules")
+    no_ctx_tool = next(
+        tool for tool in tools if tool.name == "list_alert_rules")
     with pytest.raises(ValueError):
         asyncio.run(no_ctx_tool.function(ctx=None))

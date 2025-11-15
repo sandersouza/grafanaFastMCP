@@ -23,7 +23,8 @@ class LabelMatcher:
     name: str
     value: str
     type: str = "="
-    _compiled: re.Pattern[str] | None = field(default=None, init=False, repr=False)
+    _compiled: re.Pattern[str] | None = field(
+        default=None, init=False, repr=False)
 
     def normalized_type(self) -> str:
         match_type = _MATCH_TYPE_ALIASES.get(self.type, self.type)
@@ -43,7 +44,8 @@ class LabelMatcher:
             try:
                 self._compiled = re.compile(self.value)
             except re.error as exc:  # pragma: no cover - defensive
-                raise ValueError(f"Invalid regular expression '{self.value}': {exc}") from exc
+                raise ValueError(
+                    f"Invalid regular expression '{self.value}': {exc}") from exc
         if label_value is None:
             return match_type == "!~"
         is_match = bool(self._compiled.search(label_value))
@@ -76,7 +78,8 @@ class Selector:
         return True
 
 
-def matches_all(selectors: Iterable[Selector], labels: Mapping[str, str]) -> bool:
+def matches_all(selectors: Iterable[Selector],
+                labels: Mapping[str, str]) -> bool:
     """Return True if every selector matches the provided labels."""
 
     for selector in selectors:

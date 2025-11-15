@@ -126,7 +126,6 @@ wheels = [
 
 [[package]]
 name = "grafana-fastmcp"
-version = "1.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

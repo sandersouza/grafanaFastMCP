@@ -90,7 +90,8 @@ def test_headers_fallback_to_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert config_from_headers.basic_auth is None
 
 
-def test_headers_use_bearer_when_env_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_headers_use_bearer_when_env_missing(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(config.GRAFANA_SERVICE_ACCOUNT_ENV, "env-token")
 
     headers = {"Authorization": "Bearer bearer-token"}

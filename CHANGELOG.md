@@ -1,5 +1,33 @@
 # Changelog
 Todas as mudanças notáveis deste projeto são registradas neste arquivo. Este formato segue as recomendações do "Keep a Changelog" e o projeto adota versionamento semântico (semver).
+## [v1.2.3] - 2025-11-05
+### 🚀 Adicionado / Corrigido
+- Validação de conexão ao Grafana no startup (reachability, TLS e autenticação).
+- Novas variáveis de ambiente para TLS/SSL:
+  - `GRAFANA_TLS_CERT_FILE`, `GRAFANA_TLS_KEY_FILE`, `GRAFANA_TLS_CA_FILE`, `GRAFANA_TLS_SKIP_VERIFY`.
+- Novas flags CLI para controle rápido:
+  - `--ignore-ssl` — marca `GRAFANA_TLS_SKIP_VERIFY` para aceitar certificados auto-assinados.
+  - `--check-connection` — faz uma checagem rápida de conectividade/autenticação e sai com código apropriado.
+  - `--require-grafana` / `--no-require-grafana` — controlam se a checagem é exigida no startup (por padrão ativa, exceto em testes).
+- Melhoria na construção de URLs da API do Grafana para evitar duplicação `/api/api` (normalização de paths em `GrafanaClient`).
+- `GrafanaClient.request` / `get_json` agora aceitam um parâmetro `timeout` opcional para chamadas rápidas de validação.
+- Correção de bug que impedia a verificação de autenticação no startup (indentação incorreta) — agora tokens/credenciais inválidas (HTTP 401) abortam imediatamente.
+- Comportamento de 403 em `/api/user` mantido como aviso quando autenticação por token/API key está configurada (token válido mas sem permissões). Pode ser ajustado mediante pedido.
+- Ajustes de logging: configuração de log aplicada cedo no fluxo para que `--log-level`/`LOG_LEVEL` tenham efeito durante checks; tracebacks completos são exibidos apenas em DEBUG.
+
+### 🧪 Testes e Validação
+- Adicionados testes unitários cobrindo parsing das novas variáveis TLS e o comportamento de checagem de conexão (`tests/test_config_tls_env.py`, `tests/test_main_check_connection.py`).
+- Instalação e inclusão do plugin de cobertura (`pytest-cov`) no ambiente de desenvolvimento local para permitir `pytest --cov`.
+- Suite de testes executada: 200 passed.
+- Relatório de cobertura local: ~85% global (áreas com menos cobertura: `app/main.py`, `app/patches.py` e algumas tools — indicadas para adicionar testes se desejado).
+
+### 📚 Documentação
+- Atualizados `env.example` e `README.md` para documentar as novas variáveis TLS e flags CLI.
+
+### 🛠 Observações
+- Branch de trabalho: `33-httpxerror-when-grafana-tlsssl-url-certificate-is-invalid-self-assign`.
+- Pequenas melhorias adicionais: normalização de caminhos e tempos limites para evitar bloqueios longos em startup.
+
 ## [v1.2.1] - 2025-10-19
 ### 🚀 Adicionado
 - Suporte a publicação no PyPI usando `uv build` e `uv publish --token {PYPI_API_TOKEN}`

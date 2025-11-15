@@ -31,7 +31,8 @@ class PrometheusClient:
     def __init__(self, ctx: Context, datasource_uid: str) -> None:
         self._config = get_grafana_config(ctx)
         base = self._config.url.rstrip("/")
-        self._base_url = f"{base}/api/datasources/proxy/uid/{datasource_uid}".rstrip("/")
+        self._base_url = f"{base}/api/datasources/proxy/uid/{datasource_uid}".rstrip(
+            "/")
         tls = self._config.tls_config
         self._verify = tls.resolve_verify() if tls else True
         self._cert = tls.resolve_cert() if tls else None
@@ -53,7 +54,8 @@ class PrometheusClient:
     async def request_json(
         self, path: str, params: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        url = f"{self._base_url}{path}" if path.startswith("/") else f"{self._base_url}/{path}"
+        url = f"{self._base_url}{path}" if path.startswith(
+            "/") else f"{self._base_url}/{path}"
         async with httpx.AsyncClient(
             timeout=httpx.Timeout(30.0),
             verify=self._verify,
@@ -81,7 +83,8 @@ def _parse_rfc3339(value: str) -> datetime:
     return dt
 
 
-_DURATION_RE = re.compile(r"(?P<value>\d+(?:\.\d+)?)(?P<unit>ns|us|µs|ms|s|m|h|d)")
+_DURATION_RE = re.compile(
+    r"(?P<value>\d+(?:\.\d+)?)(?P<unit>ns|us|µs|ms|s|m|h|d)")
 _UNIT_FACTORS = {
     "ns": 1e-9,
     "us": 1e-6,
@@ -148,7 +151,8 @@ async def _query_prometheus(
         effective_end = end or "now"
         effective_step = step_seconds if step_seconds is not None else 60
         if effective_step <= 0:
-            raise ValueError("stepSeconds must be greater than zero for range queries")
+            raise ValueError(
+                "stepSeconds must be greater than zero for range queries")
         start_dt = _parse_time_expression(effective_start, now)
         end_dt = _parse_time_expression(effective_end, now)
         params = {
@@ -169,9 +173,11 @@ async def _query_prometheus(
     return _ensure_success(payload).get("data", {})
 
 
-async def _metadata(
-    ctx: Context, datasource_uid: str, metric: Optional[str], limit: Optional[int]
-) -> Dict[str, Any]:
+async def _metadata(ctx: Context,
+                    datasource_uid: str,
+                    metric: Optional[str],
+                    limit: Optional[int]) -> Dict[str,
+                                                  Any]:
     await _ensure_datasource(ctx, datasource_uid)
     client = PrometheusClient(ctx, datasource_uid)
     params: Dict[str, Any] = {}
@@ -257,11 +263,10 @@ async def _metric_names(
 def register(app: FastMCP) -> None:
     """Register Prometheus tools."""
 
-    @app.tool(
-        name="list_prometheus_metric_metadata",
-        title="List Prometheus metric metadata",
-        description="List metadata entries for metrics in a Prometheus datasource.",
-    )
+    @app.tool(name="list_prometheus_metric_metadata",
+              title="List Prometheus metric metadata",
+              description="List metadata entries for metrics in a Prometheus datasource.",
+              )
     async def list_prometheus_metric_metadata(
         datasourceUid: str,
         metric: Optional[str] = None,
@@ -269,7 +274,8 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> Dict[str, Any]:
         if ctx is None:
-            raise ValueError("Context injection failed for list_prometheus_metric_metadata")
+            raise ValueError(
+                "Context injection failed for list_prometheus_metric_metadata")
         return await _metadata(ctx, datasourceUid, metric, limit)
 
     @app.tool(
@@ -311,7 +317,8 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> List[str]:
         if ctx is None:
-            raise ValueError("Context injection failed for list_prometheus_metric_names")
+            raise ValueError(
+                "Context injection failed for list_prometheus_metric_names")
         return await _metric_names(ctx, datasourceUid, regex, limit, page)
 
     @app.tool(
@@ -327,7 +334,8 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> List[str]:
         if ctx is None:
-            raise ValueError("Context injection failed for list_prometheus_label_names")
+            raise ValueError(
+                "Context injection failed for list_prometheus_label_names")
         selector_objs = []
         if matches:
             from .alerting import _parse_label_selectors  # type: ignore
@@ -349,7 +357,8 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> List[str]:
         if ctx is None:
-            raise ValueError("Context injection failed for list_prometheus_label_values")
+            raise ValueError(
+                "Context injection failed for list_prometheus_label_values")
         selector_objs = []
         if matches:
             from .alerting import _parse_label_selectors  # type: ignore

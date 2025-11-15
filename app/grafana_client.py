@@ -22,7 +22,8 @@ class GrafanaAPIError(RuntimeError):
     """Error raised when the Grafana API returns an unexpected response."""
 
     def __init__(self, status_code: int, message: str) -> None:
-        super().__init__(f"Grafana API request failed with status {status_code}: {message}")
+        super().__init__(
+            f"Grafana API request failed with status {status_code}: {message}")
         self.status_code = status_code
         self.message = message
 
@@ -54,13 +55,16 @@ class GrafanaClient:
             self._verify = True
             self._cert = None
 
-    def _headers(self, extra: Optional[Mapping[str, str]] = None) -> MutableMapping[str, str]:
+    def _headers(
+            self, extra: Optional[Mapping[str, str]] = None) -> MutableMapping[str, str]:
         headers: MutableMapping[str, str] = {
             "User-Agent": USER_AGENT,
             "Accept": "application/json",
         }
         if self.config.api_key:
-            headers.setdefault("Authorization", f"Bearer {self.config.api_key}")
+            headers.setdefault(
+                "Authorization",
+                f"Bearer {self.config.api_key}")
         if self.config.access_token and self.config.id_token:
             headers.setdefault("X-Access-Token", self.config.access_token)
             headers.setdefault("X-Grafana-Id", self.config.id_token)
@@ -75,7 +79,16 @@ class GrafanaClient:
         return None
 
     def _absolute_url(self, path: str) -> str:
+        # Normalize the incoming path to avoid duplicating the '/api' segment.
+        # Callers sometimes pass paths starting with '/api/...' (for example
+        # '/api/health'). Since _build_api_base_url already ensures the base
+        # URL ends with '/api', strip a leading '/api' from the provided path
+        # to prevent requests like '.../api/api/health'.
         path = path or ""
+        if path.startswith("/api/"):
+            path = path[len("/api/"):]
+        elif path == "/api":
+            path = ""
         return urljoin(self._base_url + "/", path.lstrip("/"))
 
     async def request(
@@ -86,12 +99,23 @@ class GrafanaClient:
         params: Optional[Mapping[str, Any]] = None,
         json: Any = None,
         headers: Optional[Mapping[str, str]] = None,
+        timeout: Optional[float | httpx.Timeout] = None,
     ) -> httpx.Response:
         url = self._absolute_url(path)
         combined_headers = self._headers(headers)
-        LOGGER.debug("Performing Grafana request", extra={"method": method, "url": url})
+        LOGGER.debug(
+            "Performing Grafana request",
+            extra={
+                "method": method,
+                "url": url})
+        # Allow callers to pass a short timeout for quick startup checks.
+        if timeout is None:
+            client_timeout = _DEFAULT_TIMEOUT
+        else:
+            client_timeout = timeout if isinstance(timeout, httpx.Timeout) else httpx.Timeout(timeout)
+
         async with httpx.AsyncClient(
-            timeout=_DEFAULT_TIMEOUT,
+            timeout=client_timeout,
             verify=self._verify,
             cert=self._cert,
             auth=self._auth(),
@@ -105,12 +129,19 @@ class GrafanaClient:
             )
         if response.status_code >= 400:
             body = response.text
-            LOGGER.debug("Grafana API error", extra={"status": response.status_code, "body": body[:512]})
+            LOGGER.debug("Grafana API error", extra={
+                         "status": response.status_code, "body": body[:512]})
             raise GrafanaAPIError(response.status_code, body)
         return response
 
-    async def get_json(self, path: str, *, params: Optional[Mapping[str, Any]] = None) -> Any:
-        response = await self.request("GET", path, params=params)
+    async def get_json(
+        self,
+        path: str,
+        *,
+        params: Optional[Mapping[str, Any]] = None,
+        timeout: Optional[float | httpx.Timeout] = None,
+    ) -> Any:
+        response = await self.request("GET", path, params=params, timeout=timeout)
         return response.json()
 
     async def post_json(
@@ -122,7 +153,9 @@ class GrafanaClient:
         headers: Optional[Mapping[str, str]] = None,
     ) -> Any:
         response = await self.request("POST", path, params=params, json=json, headers=headers)
-        if response.headers.get("content-type", "").startswith("application/json"):
+        if response.headers.get(
+            "content-type",
+                "").startswith("application/json"):
             return response.json()
         return response.text
 

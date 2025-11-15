@@ -63,8 +63,8 @@ async def _post_dashboard(
 ) -> Any:
     """
     Post dashboard to Grafana API and return a consolidated response.
-    
-    This function wraps the raw Grafana dashboard creation/update response 
+
+    This function wraps the raw Grafana dashboard creation/update response
     to prevent JSON chunking issues when used with streamable HTTP transport
     alongside ChatGPT/OpenAI. Instead of returning the raw response from
     Grafana's /dashboards/db endpoint, we return a consolidated summary.
@@ -81,15 +81,15 @@ async def _post_dashboard(
         payload["message"] = message
     if user_id is not None:
         payload["userId"] = user_id
-    
+
     try:
         # Get the raw response from Grafana
         raw_response = await client.post_json("/dashboards/db", json=payload)
-        
+
         # Extract key information for a consolidated response
         dashboard_title = dashboard.get("title", "Unknown Dashboard")
         dashboard_uid = dashboard.get("uid", "")
-        
+
         # Return a consolidated response object to avoid chunking issues
         # in streamable HTTP with ChatGPT/OpenAI
         return {
@@ -108,13 +108,12 @@ async def _post_dashboard(
             "grafana_response": raw_response,
             "type": "dashboard_operation_result"
         }
-        
+
     except GrafanaAPIError as exc:
         if exc.status_code == 412 and "name-exists" in exc.message:
             raise ValueError(
                 "Grafana recusou a criação porque já existe um dashboard com o mesmo título na pasta. "
-                "Defina overwrite=True para sobrescrever ou escolha outro nome."
-            ) from exc
+                "Defina overwrite=True para sobrescrever ou escolha outro nome.") from exc
         raise
 
 
@@ -130,7 +129,9 @@ def _schema_version_default() -> int:
 
 def _apply_dashboard_defaults(dashboard_obj: Dict[str, Any]) -> None:
     time_defaults = dashboard_obj.setdefault("time", {})
-    time_defaults.setdefault("from", os.getenv("DASHBOARD_TIME_FROM", "now-1h"))
+    time_defaults.setdefault(
+        "from", os.getenv(
+            "DASHBOARD_TIME_FROM", "now-1h"))
     time_defaults.setdefault("to", os.getenv("DASHBOARD_TIME_TO", "now"))
 
     if "schemaVersion" not in dashboard_obj:
@@ -158,7 +159,6 @@ def _apply_dashboard_defaults(dashboard_obj: Dict[str, Any]) -> None:
                     panel["datasource"] = {"uid": prom_uid}
                 elif isinstance(datasource, dict) and "uid" not in datasource:
                     datasource["uid"] = prom_uid
-
 
 
 @dataclass
@@ -193,15 +193,18 @@ def _parse_json_path(path: str) -> List[JSONPathSegment]:
                 try:
                     segment.index = int(index_str)
                 except ValueError as exc:  # pragma: no cover - defensive
-                    raise ValueError(f"Invalid array index in JSONPath: {index_str}") from exc
+                    raise ValueError(
+                        f"Invalid array index in JSONPath: {index_str}") from exc
         segment.is_append = is_append
         if segment.is_append and segment.is_wildcard:
-            raise ValueError("Cannot combine append syntax with wildcard JSONPath segments")
+            raise ValueError(
+                "Cannot combine append syntax with wildcard JSONPath segments")
         segments.append(segment)
     return segments
 
 
-def _validate_array(current: Dict[str, Any], segment: JSONPathSegment) -> List[Any]:
+def _validate_array(current: Dict[str, Any],
+                    segment: JSONPathSegment) -> List[Any]:
     value = current.get(segment.key)
     if not isinstance(value, list):
         raise ValueError(f"Field '{segment.key}' is not an array")
@@ -214,16 +217,20 @@ def _validate_array(current: Dict[str, Any], segment: JSONPathSegment) -> List[A
     return value
 
 
-def _navigate_segment(current: Dict[str, Any], segment: JSONPathSegment) -> Dict[str, Any]:
+def _navigate_segment(
+        current: Dict[str, Any], segment: JSONPathSegment) -> Dict[str, Any]:
     if segment.is_append:
-        raise ValueError("Append syntax can only be used at the final JSONPath segment")
+        raise ValueError(
+            "Append syntax can only be used at the final JSONPath segment")
     if segment.is_array:
         arr = _validate_array(current, segment)
         if segment.is_wildcard:
-            raise ValueError("Wildcard JSONPath segments are not supported for navigation")
+            raise ValueError(
+                "Wildcard JSONPath segments are not supported for navigation")
         value = arr[segment.index]
         if not isinstance(value, dict):
-            raise ValueError(f"Element at {segment.key}[{segment.index}] is not an object")
+            raise ValueError(
+                f"Element at {segment.key}[{segment.index}] is not an object")
         return value
     value = current.get(segment.key)
     if not isinstance(value, dict):
@@ -231,14 +238,16 @@ def _navigate_segment(current: Dict[str, Any], segment: JSONPathSegment) -> Dict
     return value
 
 
-def _set_at_segment(current: Dict[str, Any], segment: JSONPathSegment, value: Any) -> None:
+def _set_at_segment(current: Dict[str, Any],
+                    segment: JSONPathSegment, value: Any) -> None:
     if segment.is_append:
         arr = _validate_array(current, segment)
         arr.append(value)
         current[segment.key] = arr
         return
     if segment.is_wildcard:
-        raise ValueError("Wildcard JSONPath segments are not supported for modification")
+        raise ValueError(
+            "Wildcard JSONPath segments are not supported for modification")
     if segment.is_array:
         arr = _validate_array(current, segment)
         arr[segment.index] = value
@@ -246,18 +255,21 @@ def _set_at_segment(current: Dict[str, Any], segment: JSONPathSegment, value: An
     current[segment.key] = value
 
 
-def _remove_at_segment(current: Dict[str, Any], segment: JSONPathSegment) -> None:
+def _remove_at_segment(
+        current: Dict[str, Any], segment: JSONPathSegment) -> None:
     if segment.is_append:
         raise ValueError("Cannot use append syntax when removing values")
     if segment.is_array:
         raise ValueError("Removing individual array elements is not supported")
     if segment.is_wildcard:
-        raise ValueError("Wildcard JSONPath segments are not supported for removal")
+        raise ValueError(
+            "Wildcard JSONPath segments are not supported for removal")
     if segment.key in current:
         del current[segment.key]
 
 
-def _apply_json_path(data: Dict[str, Any], path: str, value: Any, remove: bool) -> None:
+def _apply_json_path(data: Dict[str, Any],
+                     path: str, value: Any, remove: bool) -> None:
     segments = _parse_json_path(path)
     if not segments:
         raise ValueError("JSONPath cannot be empty")
@@ -278,7 +290,8 @@ class DashboardPatchOperation(BaseModel):
         description="Operation to perform (supported: add, remove, replace)",
         pattern="^(add|remove|replace)$",
     )
-    path: str = Field(description="JSONPath identifying the dashboard field to modify")
+    path: str = Field(
+        description="JSONPath identifying the dashboard field to modify")
     value: Any | None = Field(
         default=None,
         description="Value to apply for add/replace operations. Omit for remove operations.",
@@ -296,7 +309,8 @@ class DashboardPatchOperation(BaseModel):
 PatchOperationInput = Union[DashboardPatchOperation, Mapping[str, Any]]
 
 
-def _normalize_patch_operations(operations: Sequence[PatchOperationInput]) -> List[Dict[str, Any]]:
+def _normalize_patch_operations(
+        operations: Sequence[PatchOperationInput]) -> List[Dict[str, Any]]:
     normalized: List[Dict[str, Any]] = []
     for index, operation in enumerate(operations):
         if isinstance(operation, DashboardPatchOperation):
@@ -306,8 +320,7 @@ def _normalize_patch_operations(operations: Sequence[PatchOperationInput]) -> Li
         else:
             raise TypeError(
                 "Invalid patch operation at index "
-                f"{index}: expected mapping-compatible data, got {type(operation)!r}"
-            )
+                f"{index}: expected mapping-compatible data, got {type(operation)!r}")
     return normalized
 
 
@@ -331,13 +344,15 @@ async def _update_dashboard_with_patches(
         if not op or not path:
             raise ValueError(f"Operation {idx} missing op or path")
         if op not in {"replace", "add", "remove"}:
-            raise ValueError(f"Unsupported patch operation '{op}' at index {idx}")
+            raise ValueError(
+                f"Unsupported patch operation '{op}' at index {idx}")
         remove = op == "remove"
         value = operation.get("value") if not remove else None
         try:
             _apply_json_path(working_copy, path, value, remove)
         except Exception as exc:  # pragma: no cover - defensive
-            raise ValueError(f"Failed to apply operation {idx} ({op} {path}): {exc}") from exc
+            raise ValueError(
+                f"Failed to apply operation {idx} ({op} {path}): {exc}") from exc
 
     effective_folder = folder_uid
     meta = source.get("meta")
@@ -354,7 +369,9 @@ async def _update_dashboard_with_patches(
         overwrite=True,
         user_id=user_id,
     )
-    _cache_dashboard(ctx, uid, {"dashboard": working_copy, "meta": source.get("meta")})
+    _cache_dashboard(
+        ctx, uid, {
+            "dashboard": working_copy, "meta": source.get("meta")})
     return result
 
 
@@ -406,7 +423,8 @@ async def _update_dashboard(
             overwrite,
             user_id,
         )
-    raise ValueError("Either dashboard JSON or (uid + operations) must be provided")
+    raise ValueError(
+        "Either dashboard JSON or (uid + operations) must be provided")
 
 
 async def _get_panel_queries(ctx: Context, uid: str, *, use_cache: bool = True) -> List[Dict[str, Any]]:
@@ -463,12 +481,14 @@ def _evaluate_json_path(data: Dict[str, Any], path: str) -> Any:
 
             if segment.is_array:
                 if segment.key not in value:
-                    raise ValueError(f"Field '{segment.key}' not found while evaluating JSONPath")
+                    raise ValueError(
+                        f"Field '{segment.key}' not found while evaluating JSONPath")
                 array_value = value.get(segment.key)
                 if not isinstance(array_value, list):
                     raise ValueError(f"Field '{segment.key}' is not an array")
                 if segment.is_append:
-                    raise ValueError("Append syntax is not supported when evaluating JSONPath expressions")
+                    raise ValueError(
+                        "Append syntax is not supported when evaluating JSONPath expressions")
                 if segment.is_wildcard:
                     next_values.extend(array_value)
                 else:
@@ -479,9 +499,11 @@ def _evaluate_json_path(data: Dict[str, Any], path: str) -> Any:
                     next_values.append(array_value[segment.index])
             else:
                 if segment.is_append:
-                    raise ValueError("Append syntax is not supported when evaluating JSONPath expressions")
+                    raise ValueError(
+                        "Append syntax is not supported when evaluating JSONPath expressions")
                 if segment.key not in value:
-                    raise ValueError(f"Field '{segment.key}' not found while evaluating JSONPath")
+                    raise ValueError(
+                        f"Field '{segment.key}' not found while evaluating JSONPath")
                 next_values.append(value.get(segment.key))
 
         current_values = next_values
@@ -560,7 +582,8 @@ def _extract_variable_summary(variable: Dict[str, Any]) -> Dict[str, Any]:
     return summary
 
 
-def _extract_basic_dashboard_info(dashboard: Dict[str, Any], summary: Dict[str, Any]) -> None:
+def _extract_basic_dashboard_info(
+        dashboard: Dict[str, Any], summary: Dict[str, Any]) -> None:
     summary["title"] = _safe_string(dashboard, "title")
     description = _safe_string(dashboard, "description")
     if description:
@@ -573,7 +596,8 @@ def _extract_basic_dashboard_info(dashboard: Dict[str, Any], summary: Dict[str, 
         summary["refresh"] = refresh
 
 
-def _build_summary(uid: str, dashboard: Dict[str, Any], meta: Any) -> Dict[str, Any]:
+def _build_summary(
+        uid: str, dashboard: Dict[str, Any], meta: Any) -> Dict[str, Any]:
     summary: Dict[str, Any] = {
         "uid": uid,
         "panels": [],
@@ -584,9 +608,8 @@ def _build_summary(uid: str, dashboard: Dict[str, Any], meta: Any) -> Dict[str, 
 
     panels = _safe_array(dashboard, "panels") or []
     summary["panelCount"] = len(panels)
-    summary["panels"] = [
-        _extract_panel_summary(panel) for panel in panels if isinstance(panel, dict)
-    ]
+    summary["panels"] = [_extract_panel_summary(
+        panel) for panel in panels if isinstance(panel, dict)]
 
     templating = _safe_object(dashboard, "templating")
     variables: List[Dict[str, Any]] = []
@@ -619,20 +642,17 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> Any:
         if ctx is None:
-            raise ValueError("Context injection failed for get_dashboard_by_uid")
+            raise ValueError(
+                "Context injection failed for get_dashboard_by_uid")
         return await _get_dashboard(ctx, uid, use_cache=not forceRefresh)
 
     @app.tool(
-        name="update_dashboard",
-        title="Create or update dashboard",
-        description=(
+        name="update_dashboard", title="Create or update dashboard", description=(
             "Create a new dashboard or update an existing one. Returns a consolidated response object "
             "with operation status, dashboard metadata, and success confirmation. "
             "This format prevents JSON chunking issues in streamable HTTP with ChatGPT/OpenAI. "
             "Provide either the full dashboard JSON (for create/replace) "
-            "or supply a dashboard UID with patch operations for targeted edits."
-        ),
-    )
+            "or supply a dashboard UID with patch operations for targeted edits."), )
     async def update_dashboard(
         dashboard: Optional[Dict[str, Any]] = None,
         uid: Optional[str] = None,
@@ -646,7 +666,8 @@ def register(app: FastMCP) -> None:
         if ctx is None:
             raise ValueError("Context injection failed for update_dashboard")
 
-        dashboard_payload = copy.deepcopy(dashboard) if dashboard is not None else None
+        dashboard_payload = copy.deepcopy(
+            dashboard) if dashboard is not None else None
         if dashboard_payload is not None:
             _apply_dashboard_defaults(dashboard_payload)
 
@@ -678,8 +699,7 @@ def register(app: FastMCP) -> None:
         title="Get dashboard panel queries",
         description=(
             "Return a list of panel queries for the specified dashboard. Each entry includes the panel title, the LogQL/PromQL "
-            "expression, and datasource metadata."
-        ),
+            "expression, and datasource metadata."),
     )
     async def get_dashboard_panel_queries(
         uid: str,
@@ -687,7 +707,8 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> List[Dict[str, Any]]:
         if ctx is None:
-            raise ValueError("Context injection failed for get_dashboard_panel_queries")
+            raise ValueError(
+                "Context injection failed for get_dashboard_panel_queries")
         return await _get_panel_queries(ctx, uid, use_cache=not forceRefresh)
 
     @app.tool(
@@ -702,11 +723,13 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> Any:
         if ctx is None:
-            raise ValueError("Context injection failed for get_dashboard_property")
+            raise ValueError(
+                "Context injection failed for get_dashboard_property")
         dashboard = await _get_dashboard(ctx, uid, use_cache=not forceRefresh)
         data = dashboard.get("dashboard")
         if not isinstance(data, dict):
-            raise ValueError("Dashboard payload does not contain a JSON object")
+            raise ValueError(
+                "Dashboard payload does not contain a JSON object")
         return _evaluate_json_path(data, jsonPath)
 
     @app.tool(
@@ -720,11 +743,13 @@ def register(app: FastMCP) -> None:
         ctx: Optional[Context] = None,
     ) -> Dict[str, Any]:
         if ctx is None:
-            raise ValueError("Context injection failed for get_dashboard_summary")
+            raise ValueError(
+                "Context injection failed for get_dashboard_summary")
         dashboard = await _get_dashboard(ctx, uid, use_cache=not forceRefresh)
         data = dashboard.get("dashboard")
         if not isinstance(data, dict):
-            raise ValueError("Dashboard payload does not contain a JSON object")
+            raise ValueError(
+                "Dashboard payload does not contain a JSON object")
         return _build_summary(uid, data, dashboard.get("meta"))
 
 

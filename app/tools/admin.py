@@ -27,14 +27,10 @@ def register(app: FastMCP) -> None:
     """Register administrative tools with the given FastMCP server."""
 
     @app.tool(
-        name="list_teams",
-        title="List teams",
-        description=(
+        name="list_teams", title="List teams", description=(
             "Search for Grafana teams by name. Returns a consolidated response object containing "
             "team metadata, search query, and total count. "
-            "This format prevents JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
-        ),
-    )
+            "This format prevents JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."), )
     async def list_teams(
         query: Optional[str] = None,
         ctx: Optional[Context] = None,
@@ -42,10 +38,17 @@ def register(app: FastMCP) -> None:
         if ctx is None:
             raise ValueError("Context injection failed for list_teams")
         result = await _list_teams(query, ctx)
-        
+
         # Extract teams array from the API response
-        teams = result.get("teams", []) if isinstance(result, dict) else (result if isinstance(result, list) else [])
-        
+        teams = result.get(
+            "teams",
+            []) if isinstance(
+            result,
+            dict) else (
+            result if isinstance(
+                result,
+                list) else [])
+
         return {
             "teams": teams,
             "total_count": len(teams),
@@ -54,24 +57,20 @@ def register(app: FastMCP) -> None:
         }
 
     @app.tool(
-        name="list_users_by_org",
-        title="List users by organization",
-        description=(
+        name="list_users_by_org", title="List users by organization", description=(
             "Return all users that belong to the current Grafana organization. Returns a consolidated "
             "response object containing users list, email, roles, and status metadata. "
-            "This format prevents JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."
-        ),
-    )
+            "This format prevents JSON chunking issues in streamable HTTP with ChatGPT/OpenAI."), )
     async def list_users_by_org(
         ctx: Optional[Context] = None,
     ) -> Any:
         if ctx is None:
             raise ValueError("Context injection failed for list_users_by_org")
         result = await _list_users(ctx)
-        
+
         # Ensure we have a list, even if the API returns something unexpected
         users = result if isinstance(result, list) else []
-        
+
         return {
             "users": users,
             "total_count": len(users),

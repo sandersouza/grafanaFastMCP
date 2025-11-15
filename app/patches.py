@@ -44,7 +44,8 @@ def _normalize_media_types(accept_header: str) -> list[str]:
 
 
 def _is_application_wildcard(media_type: str) -> bool:
-    return media_type.endswith("/*") and media_type.split("/", 1)[0] == "application"
+    return media_type.endswith(
+        "/*") and media_type.split("/", 1)[0] == "application"
 
 
 def _is_text_wildcard(media_type: str) -> bool:
@@ -94,8 +95,12 @@ def ensure_streamable_http_accept_patch() -> None:
 
         return has_json, has_sse
 
-    StreamableHTTPServerTransport._check_accept_headers = patched_check_accept_headers  # type: ignore[assignment]
-    setattr(StreamableHTTPServerTransport, "_original_check_accept_headers", original_check)
+    # type: ignore[assignment]
+    StreamableHTTPServerTransport._check_accept_headers = patched_check_accept_headers
+    setattr(
+        StreamableHTTPServerTransport,
+        "_original_check_accept_headers",
+        original_check)
     _PATCH_ACCEPT_APPLIED = True
 
 
@@ -115,8 +120,14 @@ def ensure_streamable_http_server_patch() -> None:
 
         starlette_app = self.streamable_http_app()
 
-        keep_alive_timeout = float(os.environ.get("MCP_STREAMABLE_HTTP_TIMEOUT_KEEP_ALIVE", "65"))
-        notify_timeout = float(os.environ.get("MCP_STREAMABLE_HTTP_TIMEOUT_NOTIFY", "120"))
+        keep_alive_timeout = float(
+            os.environ.get(
+                "MCP_STREAMABLE_HTTP_TIMEOUT_KEEP_ALIVE",
+                "65"))
+        notify_timeout = float(
+            os.environ.get(
+                "MCP_STREAMABLE_HTTP_TIMEOUT_NOTIFY",
+                "120"))
         graceful_timeout = float(
             os.environ.get(
                 "MCP_STREAMABLE_HTTP_TIMEOUT_GRACEFUL_SHUTDOWN",
@@ -149,7 +160,8 @@ def ensure_streamable_http_server_patch() -> None:
                 setattr(self, "_uvicorn_server", None)
 
     setattr(FastMCP, "_original_run_streamable_http_async", original_impl)
-    FastMCP.run_streamable_http_async = patched_run_streamable_http_async  # type: ignore[assignment]
+    # type: ignore[assignment]
+    FastMCP.run_streamable_http_async = patched_run_streamable_http_async
     _PATCH_STREAMABLE_SERVER_APPLIED = True
 
 
@@ -167,7 +179,9 @@ def ensure_sse_server_patch() -> None:
         _PATCH_SSE_SERVER_APPLIED = True
         return
 
-    async def patched_run_sse_async(self: FastMCP, mount_path: str | None = None) -> None:
+    async def patched_run_sse_async(
+            self: FastMCP,
+            mount_path: str | None = None) -> None:
         import uvicorn
 
         starlette_app = self.sse_app(mount_path)
@@ -197,12 +211,19 @@ def set_streamable_http_instructions(value: str | None) -> None:
     normalized = value.strip() if isinstance(value, str) else ""
     _STREAMABLE_HTTP_INSTRUCTIONS = normalized or ""
     try:
-        setattr(StreamableHTTPServerTransport, "_fastmcp_preprompt_text", _STREAMABLE_HTTP_INSTRUCTIONS)
+        setattr(
+            StreamableHTTPServerTransport,
+            "_fastmcp_preprompt_text",
+            _STREAMABLE_HTTP_INSTRUCTIONS)
     except Exception:
-        LOGGER.debug("Could not attach pre-prompt to StreamableHTTP transport", exc_info=True)
+        LOGGER.debug(
+            "Could not attach pre-prompt to StreamableHTTP transport",
+            exc_info=True)
 
 
-def _resolve_request_instructions(request: Request, default_text: str | None) -> Optional[str]:
+def _resolve_request_instructions(
+        request: Request,
+        default_text: str | None) -> Optional[str]:
     """Resolve the instruction text using headers or the cached default."""
 
     header_template = request.headers.get("x-preprompt-id")
@@ -214,7 +235,8 @@ def _resolve_request_instructions(request: Request, default_text: str | None) ->
 
     tenant_key = request.headers.get("x-tenant")
     if tenant_key:
-        env_key = f"MCP_PREPROMPT_TENANT_{tenant_key}".upper().replace("-", "_")
+        env_key = f"MCP_PREPROMPT_TENANT_{tenant_key}".upper().replace(
+            "-", "_")
         env_value = os.getenv(env_key)
         if env_value:
             return format_instructions(env_value.strip())
@@ -254,7 +276,6 @@ def ensure_streamable_http_instructions_patch() -> None:
         from http import HTTPStatus
         from pydantic import ValidationError
         from sse_starlette import EventSourceResponse
-        from starlette.responses import Response
         from starlette.types import Receive, Scope, Send
 
         from mcp.server.streamable_http import EventMessage
@@ -262,20 +283,19 @@ def ensure_streamable_http_instructions_patch() -> None:
         from mcp.types import (
             INTERNAL_ERROR,
             INVALID_PARAMS,
-            INVALID_REQUEST,
             PARSE_ERROR,
-            ErrorData,
             JSONRPCError,
             JSONRPCMessage,
             JSONRPCRequest,
             JSONRPCResponse,
-            RequestId,
         )
     except Exception as exc:  # pragma: no cover - runtime guard
-        LOGGER.warning("Streamable HTTP instructions patch unavailable: %s", exc)
+        LOGGER.warning(
+            "Streamable HTTP instructions patch unavailable: %s", exc)
         return
 
-    transport_logger = logging.getLogger(StreamableHTTPServerTransport.__module__)
+    transport_logger = logging.getLogger(
+        StreamableHTTPServerTransport.__module__)
 
     original_handle_post = StreamableHTTPServerTransport._handle_post_request
 
@@ -288,7 +308,8 @@ def ensure_streamable_http_instructions_patch() -> None:
     ) -> None:
         writer = self._read_stream_writer
         if writer is None:
-            raise ValueError("No read stream writer available. Ensure connect() is called first.")
+            raise ValueError(
+                "No read stream writer available. Ensure connect() is called first.")
         try:
             has_json, has_sse = self._check_accept_headers(request)
             if not (has_json and has_sse):
@@ -330,8 +351,9 @@ def ensure_streamable_http_instructions_patch() -> None:
                 return
 
             is_initialization_request = (
-                isinstance(message.root, JSONRPCRequest) and message.root.method == "initialize"
-            )
+                isinstance(
+                    message.root,
+                    JSONRPCRequest) and message.root.method == "initialize")
 
             if is_initialization_request:
                 if self.mcp_session_id:
@@ -360,20 +382,26 @@ def ensure_streamable_http_instructions_patch() -> None:
                 return
 
             request_id = str(message.root.id)
-            self._request_streams[request_id] = anyio.create_memory_object_stream[EventMessage](0)
+            self._request_streams[request_id] = anyio.create_memory_object_stream[EventMessage](
+                0)
             request_stream_reader = self._request_streams[request_id][1]
 
             instructions_event: dict[str, str] | None = None
             if is_initialization_request:
-                instructions_event_text = _resolve_request_instructions(
-                    request,
-                    getattr(self, "_fastmcp_preprompt_text", _STREAMABLE_HTTP_INSTRUCTIONS),
-                )
+                instructions_event_text = _resolve_request_instructions(request, getattr(
+                    self, "_fastmcp_preprompt_text", _STREAMABLE_HTTP_INSTRUCTIONS), )
                 if instructions_event_text:
-                    instructions_event = _build_session_update_event(instructions_event_text)
+                    instructions_event = _build_session_update_event(
+                        instructions_event_text)
                     if hasattr(request, "state"):
-                        setattr(request.state, "fastmcp_instructions_applied", True)
-                        setattr(request.state, "fastmcp_instructions", instructions_event_text)
+                        setattr(
+                            request.state,
+                            "fastmcp_instructions_applied",
+                            True)
+                        setattr(
+                            request.state,
+                            "fastmcp_instructions",
+                            instructions_event_text)
 
             if self.is_json_response_enabled:
                 metadata = ServerMessageMetadata(request_context=request)
@@ -383,26 +411,29 @@ def ensure_streamable_http_instructions_patch() -> None:
                     response_message = None
 
                     async for event_message in request_stream_reader:
-                        if isinstance(event_message.message.root, JSONRPCResponse | JSONRPCError):
+                        if isinstance(
+                                event_message.message.root,
+                                JSONRPCResponse | JSONRPCError):
                             response_message = event_message.message
                             break
                         else:
-                            transport_logger.debug(
-                                "received: %s", getattr(event_message.message.root, "method", "?")
-                            )
+                            transport_logger.debug("received: %s", getattr(
+                                event_message.message.root, "method", "?"))
 
                     if response_message:
                         response = self._create_json_response(response_message)
                         await response(scope, receive, send)
                     else:
-                        transport_logger.error("No response message received before stream closed")
+                        transport_logger.error(
+                            "No response message received before stream closed")
                         response = self._create_error_response(
                             "Error processing request: No response received",
                             HTTPStatus.INTERNAL_SERVER_ERROR,
                         )
                         await response(scope, receive, send)
                 except Exception:
-                    transport_logger.exception("Error processing JSON response")
+                    transport_logger.exception(
+                        "Error processing JSON response")
                     response = self._create_error_response(
                         "Error processing request",
                         HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -412,7 +443,8 @@ def ensure_streamable_http_instructions_patch() -> None:
                 finally:
                     await self._clean_up_memory_streams(request_id)
             else:
-                sse_stream_writer, sse_stream_reader = anyio.create_memory_object_stream[dict[str, str]](0)
+                sse_stream_writer, sse_stream_reader = anyio.create_memory_object_stream[dict[str, str]](
+                    0)
 
                 instructions_event_state = instructions_event
 
@@ -421,13 +453,12 @@ def ensure_streamable_http_instructions_patch() -> None:
                     try:
                         async with sse_stream_writer, request_stream_reader:
                             async for event_message in request_stream_reader:
-                                event_data = self._create_event_data(event_message)
+                                event_data = self._create_event_data(
+                                    event_message)
                                 await sse_stream_writer.send(event_data)
 
-                                if (
-                                    instructions_event_state
-                                    and isinstance(event_message.message.root, JSONRPCResponse)
-                                ):
+                                if (instructions_event_state and isinstance(
+                                        event_message.message.root, JSONRPCResponse)):
                                     await sse_stream_writer.send(instructions_event_state)
                                     instructions_event_state = None
 
@@ -457,8 +488,10 @@ def ensure_streamable_http_instructions_patch() -> None:
                 try:
                     async with anyio.create_task_group() as tg:
                         tg.start_soon(response, scope, receive, send)
-                        metadata = ServerMessageMetadata(request_context=request)
-                        session_message = SessionMessage(message, metadata=metadata)
+                        metadata = ServerMessageMetadata(
+                            request_context=request)
+                        session_message = SessionMessage(
+                            message, metadata=metadata)
                         await writer.send(session_message)
                 except Exception:
                     transport_logger.exception("SSE response error")
@@ -478,8 +511,12 @@ def ensure_streamable_http_instructions_patch() -> None:
                 await writer.send(Exception(err))
             return
 
-    StreamableHTTPServerTransport._handle_post_request = patched_handle_post_request  # type: ignore[assignment]
-    setattr(StreamableHTTPServerTransport, "_original_handle_post_request", original_handle_post)
+    # type: ignore[assignment]
+    StreamableHTTPServerTransport._handle_post_request = patched_handle_post_request
+    setattr(
+        StreamableHTTPServerTransport,
+        "_original_handle_post_request",
+        original_handle_post)
     _PATCH_STREAMABLE_INSTRUCTIONS_APPLIED = True
 
 
@@ -494,7 +531,8 @@ def ensure_sse_post_alias_patch() -> None:
         from mcp.server.fastmcp.server import FastMCP  # type: ignore[import]
         from mcp.server.sse import SseServerTransport  # type: ignore[import]
         import mcp.types as mcp_types  # type: ignore[import]
-        from mcp.shared.message import ServerMessageMetadata, SessionMessage  # type: ignore[import]
+        # type: ignore[import]
+        from mcp.shared.message import ServerMessageMetadata, SessionMessage
     except (ImportError, SyntaxError) as exc:  # pragma: no cover - depends on runtime env
         LOGGER.debug("Skipping SSE alias patch: %s", exc)
         return
@@ -508,13 +546,15 @@ def ensure_sse_post_alias_patch() -> None:
         from starlette.responses import Response
         from starlette.routing import Mount, Route
     except ImportError as exc:  # pragma: no cover - runtime dependency
-        LOGGER.debug("Starlette import failed, skipping SSE alias patch: %s", exc)
+        LOGGER.debug(
+            "Starlette import failed, skipping SSE alias patch: %s", exc)
         return
 
     try:
         from pydantic import ValidationError
     except ImportError as exc:  # pragma: no cover
-        LOGGER.debug("Pydantic not available, skipping SSE alias patch: %s", exc)
+        LOGGER.debug(
+            "Pydantic not available, skipping SSE alias patch: %s", exc)
         return
 
     original_sse_app = FastMCP.sse_app
@@ -530,11 +570,13 @@ def ensure_sse_post_alias_patch() -> None:
         sse_transport = SseServerTransport(normalized_message_endpoint)
 
         async def handle_sse(scope, receive, send):
-            async with sse_transport.connect_sse(scope, receive, send) as streams:  # type: ignore[attr-defined]
+            # type: ignore[attr-defined]
+            async with sse_transport.connect_sse(scope, receive, send) as streams:
                 await self._mcp_server.run(  # type: ignore[attr-defined]
                     streams[0],
                     streams[1],
-                    self._mcp_server.create_initialization_options(),  # type: ignore[attr-defined]
+                    # type: ignore[attr-defined]
+                    self._mcp_server.create_initialization_options(),
                 )
             return Response()
 
@@ -550,16 +592,21 @@ def ensure_sse_post_alias_patch() -> None:
             except ValueError:
                 return Response("Invalid session ID", status_code=400)
 
-            writer = sse_transport._read_stream_writers.get(session_id)  # type: ignore[attr-defined]
+            writer = sse_transport._read_stream_writers.get(
+                session_id)  # type: ignore[attr-defined]
             if not writer:
                 return Response("Could not find session", status_code=404)
 
             body = await request.body()
             try:
-                message = mcp_types.JSONRPCMessage.model_validate_json(body)  # type: ignore[attr-defined]
+                message = mcp_types.JSONRPCMessage.model_validate_json(
+                    body)  # type: ignore[attr-defined]
             except ValidationError as err:
                 task = BackgroundTask(writer.send, err)
-                return Response("Could not parse message", status_code=400, background=task)
+                return Response(
+                    "Could not parse message",
+                    status_code=400,
+                    background=task)
 
             metadata = ServerMessageMetadata(request_context=request)
             session_message = SessionMessage(message, metadata=metadata)
@@ -577,59 +624,86 @@ def ensure_sse_post_alias_patch() -> None:
 
         if getattr(self, "_auth_server_provider", None):
             try:
-                from mcp.server.auth.middleware.auth_context import AuthContextMiddleware  # type: ignore[import]
+                # type: ignore[import]
+                from mcp.server.auth.middleware.auth_context import AuthContextMiddleware
                 from mcp.server.auth.middleware.bearer_auth import (  # type: ignore[import]
                     BearerAuthBackend,
                     RequireAuthMiddleware,
                 )
-                from mcp.server.auth.routes import create_auth_routes  # type: ignore[import]
+                # type: ignore[import]
+                from mcp.server.auth.routes import create_auth_routes
             except ImportError as exc:  # pragma: no cover - optional runtime dependency
-                LOGGER.warning("Auth modules missing, skipping SSE alias patch: %s", exc)
+                LOGGER.warning(
+                    "Auth modules missing, skipping SSE alias patch: %s", exc)
                 return original_sse_app(self, mount_path=mount_path)
 
             assert self.settings.auth  # type: ignore[attr-defined]
-            required_scopes = self.settings.auth.required_scopes or []  # type: ignore[attr-defined]
+            # type: ignore[attr-defined]
+            required_scopes = self.settings.auth.required_scopes or []
 
             middleware = [
                 Middleware(
                     AuthenticationMiddleware,
-                    backend=BearerAuthBackend(provider=self._auth_server_provider),  # type: ignore[attr-defined]
+                    backend=BearerAuthBackend(
+                        provider=self._auth_server_provider),
+                    # type: ignore[attr-defined]
                 ),
                 Middleware(AuthContextMiddleware),
             ]
 
             routes.extend(
                 create_auth_routes(
-                    provider=self._auth_server_provider,  # type: ignore[attr-defined]
-                    issuer_url=self.settings.auth.issuer_url,  # type: ignore[attr-defined]
-                    service_documentation_url=self.settings.auth.service_documentation_url,  # type: ignore[attr-defined]
-                    client_registration_options=self.settings.auth.client_registration_options,  # type: ignore[attr-defined]
-                    revocation_options=self.settings.auth.revocation_options,  # type: ignore[attr-defined]
+                    # type: ignore[attr-defined]
+                    provider=self._auth_server_provider,
+                    # type: ignore[attr-defined]
+                    issuer_url=self.settings.auth.issuer_url,
+                    # type: ignore[attr-defined]
+                    service_documentation_url=self.settings.auth.service_documentation_url,
+                    # type: ignore[attr-defined]
+                    client_registration_options=self.settings.auth.client_registration_options,
+                    # type: ignore[attr-defined]
+                    revocation_options=self.settings.auth.revocation_options,
                 )
             )
 
-            protected_endpoint = RequireAuthMiddleware(dispatch_endpoint, required_scopes)
+            protected_endpoint = RequireAuthMiddleware(
+                dispatch_endpoint, required_scopes)
             routes.append(
-                Route(self.settings.sse_path, endpoint=protected_endpoint, methods=["GET", "POST"])
-            )
+                Route(
+                    self.settings.sse_path,
+                    endpoint=protected_endpoint,
+                    methods=[
+                        "GET",
+                        "POST"]))
             routes.append(
                 Mount(
                     self.settings.message_path,
-                    app=RequireAuthMiddleware(sse_transport.handle_post_message, required_scopes),
-                )
-            )
+                    app=RequireAuthMiddleware(
+                        sse_transport.handle_post_message,
+                        required_scopes),
+                ))
         else:
             async def combined_endpoint(request: Request) -> Response:
                 return await dispatch_endpoint(request)
 
             routes.append(
-                Route(self.settings.sse_path, endpoint=combined_endpoint, methods=["GET", "POST"])
-            )
-            routes.append(Mount(self.settings.message_path, app=sse_transport.handle_post_message))
+                Route(
+                    self.settings.sse_path,
+                    endpoint=combined_endpoint,
+                    methods=[
+                        "GET",
+                        "POST"]))
+            routes.append(
+                Mount(
+                    self.settings.message_path,
+                    app=sse_transport.handle_post_message))
 
         routes.extend(getattr(self, "_custom_starlette_routes", []))
 
-        return Starlette(debug=self.settings.debug, routes=routes, middleware=middleware)  # type: ignore[name-defined]
+        return Starlette(
+            debug=self.settings.debug,
+            routes=routes,
+            middleware=middleware)  # type: ignore[name-defined]
 
     FastMCP.sse_app = patched_sse_app  # type: ignore[assignment]
     setattr(FastMCP, "_original_sse_app", original_sse_app)

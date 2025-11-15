@@ -59,12 +59,12 @@ def _annotation_to_schema(annotation: Any) -> Dict[str, Any]:
     if isinstance(annotation, str):
         normalized = annotation.strip()
         if normalized.startswith("typing."):
-            normalized = normalized[len("typing.") :]
+            normalized = normalized[len("typing."):]
         if normalized.endswith(" | None"):
             normalized = normalized[: -len(" | None")]
             return _annotation_to_schema(normalized)
         if normalized.startswith("Optional[") and normalized.endswith("]"):
-            inner = normalized[len("Optional[") : -1]
+            inner = normalized[len("Optional["): -1]
             return _annotation_to_schema(inner)
         lower = normalized.lower()
         if lower in {"str", "string"}:
@@ -79,9 +79,11 @@ def _annotation_to_schema(annotation: Any) -> Dict[str, Any]:
             open_bracket = normalized.find("[")
             close_bracket = normalized.rfind("]")
             item_annotation: Optional[str] = None
-            if open_bracket != -1 and close_bracket != -1 and close_bracket > open_bracket + 1:
-                item_annotation = normalized[open_bracket + 1 : close_bracket]
-            items_schema = _annotation_to_schema(item_annotation) if item_annotation else {}
+            if open_bracket != -1 and close_bracket != - \
+                    1 and close_bracket > open_bracket + 1:
+                item_annotation = normalized[open_bracket + 1: close_bracket]
+            items_schema = _annotation_to_schema(
+                item_annotation) if item_annotation else {}
             return {"type": "array", "items": items_schema or {}}
         if lower in {"list", "sequence"}:
             return {"type": "array", "items": {}}
@@ -99,7 +101,9 @@ def _annotation_to_schema(annotation: Any) -> Dict[str, Any]:
 
     if origin in union_types:
         non_none = [arg for arg in args if arg is not type(None)]  # noqa: E721
-        schemas = [schema for schema in (_annotation_to_schema(arg) or {} for arg in non_none) if schema]
+        schemas = [
+            schema for schema in (
+                _annotation_to_schema(arg) or {} for arg in non_none) if schema]
         if not schemas:
             return {}
         if len(non_none) == 1:
@@ -122,8 +126,9 @@ def _annotation_to_schema(annotation: Any) -> Dict[str, Any]:
                 item_schema = _annotation_to_schema(args[0]) or {}
             else:
                 item_schema = {
-                    "anyOf": [schema for schema in (_annotation_to_schema(arg) or {} for arg in args) if schema]
-                }
+                    "anyOf": [
+                        schema for schema in (
+                            _annotation_to_schema(arg) or {} for arg in args) if schema]}
                 if not item_schema["anyOf"]:
                     item_schema = {}
         return {"type": "array", "items": item_schema or {}}
@@ -167,7 +172,7 @@ class FastMCP:
         )
         self._logger = logging.getLogger(__name__)
 
-    # Decorator -----------------------------------------------------------------
+    # Decorator --------------------------------------------------------------
     def tool(
         self,
         *,
@@ -177,7 +182,8 @@ class FastMCP:
     ) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
         """Register a tool function with metadata and inferred schema."""
 
-        def decorator(func: Callable[..., Awaitable[Any]]) -> Callable[..., Awaitable[Any]]:
+        def decorator(func: Callable[..., Awaitable[Any]]
+                      ) -> Callable[..., Awaitable[Any]]:
             schema = self._normalize_schema(self._build_schema(func))
             tool_def = ToolDefinition(
                 name=name,
@@ -193,30 +199,31 @@ class FastMCP:
 
         return decorator
 
-    # Discovery -----------------------------------------------------------------
+    # Discovery --------------------------------------------------------------
     async def list_tools(self) -> List[ToolDefinition]:
         return list(self._tools)
 
-    # Execution -----------------------------------------------------------------
+    # Execution --------------------------------------------------------------
     def run(self, transport: str, *, mount_path: Optional[str] = None) -> None:
         self._run_calls.append((transport, mount_path))
         if transport == "stdio":
             self._run_stdio()
 
-    # Utilities -----------------------------------------------------------------
+    # Utilities --------------------------------------------------------------
     def streamable_http_app(self) -> "FastMCP":
         return self
 
     async def run_streamable_http_async(self) -> None:  # pragma: no cover - patched in tests
         raise RuntimeError("Streamable HTTP transport not implemented in stub")
 
-    # Internal helpers -----------------------------------------------------------
+    # Internal helpers -------------------------------------------------------
     def _run_stdio(self) -> None:
         session = _STDIOHandler(self)
         session.run()
 
-    # Schema generation ----------------------------------------------------------
-    def _build_schema(self, func: Callable[..., Awaitable[Any]]) -> Dict[str, Any]:
+    # Schema generation ------------------------------------------------------
+    def _build_schema(
+            self, func: Callable[..., Awaitable[Any]]) -> Dict[str, Any]:
         signature = inspect.signature(func)
         try:
             type_hints = get_type_hints(func, include_extras=True)
@@ -228,7 +235,9 @@ class FastMCP:
         for name, param in signature.parameters.items():
             if name == "ctx":
                 continue
-            if param.kind in {inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD}:
+            if param.kind in {
+                    inspect.Parameter.VAR_POSITIONAL,
+                    inspect.Parameter.VAR_KEYWORD}:
                 continue
 
             annotation = type_hints.get(name, param.annotation)
@@ -254,7 +263,13 @@ class FastMCP:
             # schema. Since this is a generic fallback used for array items, we
             # avoid producing nested array schemas without explicit items.
             return {
-                "type": ["boolean", "integer", "number", "string", "object", "null"],
+                "type": [
+                    "boolean",
+                    "integer",
+                    "number",
+                    "string",
+                    "object",
+                    "null"],
             }
 
         def normalize(node: Any) -> Dict[str, Any]:
@@ -268,7 +283,8 @@ class FastMCP:
                 if "array" in schema_type:
                     items = normalized.get("items")
                     if isinstance(items, list):
-                        normalized["items"] = [normalize(item) for item in items] or fallback_items_schema()
+                        normalized["items"] = [
+                            normalize(item) for item in items] or fallback_items_schema()
                     elif isinstance(items, dict):
                         normalized["items"] = normalize(items)
                     else:
@@ -276,7 +292,8 @@ class FastMCP:
             elif schema_type == "array":
                 items = normalized.get("items")
                 if isinstance(items, list):
-                    normalized["items"] = [normalize(item) for item in items] or fallback_items_schema()
+                    normalized["items"] = [
+                        normalize(item) for item in items] or fallback_items_schema()
                 elif isinstance(items, dict):
                     normalized["items"] = normalize(items)
                 else:
@@ -284,7 +301,9 @@ class FastMCP:
             elif schema_type == "object":
                 properties = normalized.get("properties")
                 if isinstance(properties, dict):
-                    normalized["properties"] = {key: normalize(value) for key, value in properties.items()}
+                    normalized["properties"] = {
+                        key: normalize(value) for key,
+                        value in properties.items()}
                 else:
                     normalized["properties"] = {}
             else:
@@ -295,12 +314,16 @@ class FastMCP:
             for key in ("anyOf", "oneOf", "allOf"):
                 options = normalized.get(key)
                 if isinstance(options, list):
-                    normalized[key] = [normalize(option) for option in options if isinstance(option, dict)]
+                    normalized[key] = [
+                        normalize(option) for option in options if isinstance(
+                            option, dict)]
 
             required = normalized.get("required")
             if required is not None:
                 if isinstance(required, list):
-                    filtered = [name for name in required if isinstance(name, str)]
+                    filtered = [
+                        name for name in required if isinstance(
+                            name, str)]
                     if filtered:
                         normalized["required"] = filtered
                     else:
@@ -328,11 +351,14 @@ class _STDIOHandler:
     def __init__(self, app: FastMCP) -> None:
         self._app = app
         self._logger = logging.getLogger("mcp.stdio")
-        self._tool_map: Dict[str, ToolDefinition] = {tool.name: tool for tool in app._tools}
-        self._context = Context(request_context=SimpleNamespace(session=SimpleNamespace()))
+        self._tool_map: Dict[str, ToolDefinition] = {
+            tool.name: tool for tool in app._tools}
+        self._context = Context(
+            request_context=SimpleNamespace(
+                session=SimpleNamespace()))
         self._initialized = False
 
-    # Public API -----------------------------------------------------------------
+    # Public API -------------------------------------------------------------
     def run(self) -> None:
         stdin = sys.stdin
         for raw_line in stdin:
@@ -353,12 +379,14 @@ class _STDIOHandler:
             except SystemExit:
                 raise
             except Exception as err:  # pragma: no cover - defensive
-                self._logger.error("Unhandled STDIO error: %s", err, exc_info=True)
+                self._logger.error(
+                    "Unhandled STDIO error: %s", err, exc_info=True)
                 if isinstance(message, dict) and "id" in message:
                     self._write_error(message.get("id"), -32603, str(err))
 
-    # Message handling -----------------------------------------------------------
-    def _handle_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    # Message handling -------------------------------------------------------
+    def _handle_message(
+            self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         if not isinstance(message, dict):
             return None
 
@@ -380,7 +408,8 @@ class _STDIOHandler:
                 try:
                     logging.getLogger().setLevel(level.upper())
                 except Exception:  # pragma: no cover - defensive
-                    self._logger.debug("Failed to set log level to %s", level, exc_info=True)
+                    self._logger.debug(
+                        "Failed to set log level to %s", level, exc_info=True)
         # Other notifications are currently ignored.
 
     def _handle_request(self, message: Dict[str, Any]) -> Dict[str, Any]:
@@ -401,9 +430,11 @@ class _STDIOHandler:
                 self._handle_notification(message)
                 result = {}
             else:
-                return self._error_response(request_id, -32601, f"Method '{method}' not implemented")
+                return self._error_response(
+                    request_id, -32601, f"Method '{method}' not implemented")
         except _JSONRPCError as exc:
-            return self._error_response(request_id, exc.code, exc.message, exc.data)
+            return self._error_response(
+                request_id, exc.code, exc.message, exc.data)
         except Exception as err:  # pragma: no cover - defensive
             self._logger.error("STDIO request failed: %s", err, exc_info=True)
             return self._error_response(request_id, -32603, str(err))
@@ -414,7 +445,7 @@ class _STDIOHandler:
             "result": result,
         }
 
-    # Individual request handlers ------------------------------------------------
+    # Individual request handlers --------------------------------------------
     def _handle_initialize(self, params: Dict[str, Any]) -> Dict[str, Any]:
         protocol = params.get("protocolVersion") or MCP_PROTOCOL_VERSION
         self._initialized = True
@@ -424,7 +455,8 @@ class _STDIOHandler:
         if self._app.debug:
             capabilities["logging"] = {}
 
-        instructions = self._app.instructions if isinstance(self._app.instructions, str) else None
+        instructions = self._app.instructions if isinstance(
+            self._app.instructions, str) else None
         try:
             from app import __version__ as app_version  # type: ignore
         except Exception:  # pragma: no cover - defensive
@@ -492,8 +524,9 @@ class _STDIOHandler:
             response["structuredContent"] = structured
         return response
 
-    # Tool helpers ----------------------------------------------------------------
-    def _prepare_tool_arguments(self, tool: ToolDefinition, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    # Tool helpers -----------------------------------------------------------
+    def _prepare_tool_arguments(
+            self, tool: ToolDefinition, arguments: Dict[str, Any]) -> Dict[str, Any]:
         signature = tool.signature
         prepared: Dict[str, Any] = {}
 
@@ -501,18 +534,21 @@ class _STDIOHandler:
             if name == "ctx":
                 continue
 
-            if parameter.kind in {inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD}:
+            if parameter.kind in {
+                    inspect.Parameter.VAR_POSITIONAL,
+                    inspect.Parameter.VAR_KEYWORD}:
                 continue
 
             if name in arguments:
                 prepared[name] = arguments[name]
             elif parameter.default is inspect._empty:
-                raise _JSONRPCError(-32602, f"Missing required argument: {name}")
+                raise _JSONRPCError(-32602,
+                                    f"Missing required argument: {name}")
 
-        # Include any unexpected arguments that the tool can accept via **kwargs.
+        # Include any unexpected arguments that the tool can accept via
+        # **kwargs.
         has_var_kwargs = any(
-            param.kind is inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values()
-        )
+            param.kind is inspect.Parameter.VAR_KEYWORD for param in signature.parameters.values())
         if has_var_kwargs:
             for key, value in arguments.items():
                 if key not in prepared and key != "ctx":
@@ -520,13 +556,15 @@ class _STDIOHandler:
 
         return prepared
 
-    async def _invoke_tool(self, tool: ToolDefinition, arguments: Dict[str, Any]) -> Any:
+    async def _invoke_tool(self, tool: ToolDefinition,
+                           arguments: Dict[str, Any]) -> Any:
         kwargs = dict(arguments)
         if "ctx" in tool.signature.parameters:
             kwargs["ctx"] = self._context
         return await tool.function(**kwargs)  # type: ignore[arg-type]
 
-    def _format_tool_result(self, result: Any) -> Tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
+    def _format_tool_result(
+            self, result: Any) -> Tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
         structured: Optional[Dict[str, Any]] = None
         if isinstance(result, dict):
             structured = result
@@ -542,16 +580,34 @@ class _STDIOHandler:
         content_block = {"type": "text", "text": text_output}
         return [content_block], structured
 
-    # Response helpers -----------------------------------------------------------
+    # Response helpers -------------------------------------------------------
     def _write_response(self, response: Dict[str, Any]) -> None:
         sys.stdout.write(json.dumps(response, ensure_ascii=False) + "\n")
         sys.stdout.flush()
 
-    def _write_error(self, request_id: Any, code: int, message: str, data: Optional[Any] = None) -> None:
-        sys.stdout.write(json.dumps(self._error_response(request_id, code, message, data), ensure_ascii=False) + "\n")
+    def _write_error(
+            self,
+            request_id: Any,
+            code: int,
+            message: str,
+            data: Optional[Any] = None) -> None:
+        sys.stdout.write(
+            json.dumps(
+                self._error_response(
+                    request_id,
+                    code,
+                    message,
+                    data),
+                ensure_ascii=False) +
+            "\n")
         sys.stdout.flush()
 
-    def _error_response(self, request_id: Any, code: int, message: str, data: Optional[Any] = None) -> Dict[str, Any]:
+    def _error_response(self,
+                        request_id: Any,
+                        code: int,
+                        message: str,
+                        data: Optional[Any] = None) -> Dict[str,
+                                                            Any]:
         error: Dict[str, Any] = {"code": code, "message": message}
         if data is not None:
             error["data"] = data
@@ -559,7 +615,11 @@ class _STDIOHandler:
 
 
 class _JSONRPCError(RuntimeError):
-    def __init__(self, code: int, message: str, data: Optional[Any] = None) -> None:
+    def __init__(
+            self,
+            code: int,
+            message: str,
+            data: Optional[Any] = None) -> None:
         super().__init__(message)
         self.code = code
         self.message = message

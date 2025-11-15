@@ -17,10 +17,6 @@ build/
 # Arquivos de log
 *.log
 
-# IDEs
-.vscode/
-.idea/
-
 # Arquivos do sistema
 .DS_Store
 Thumbs.db

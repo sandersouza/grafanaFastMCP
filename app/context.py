@@ -35,13 +35,15 @@ def _request_headers(request: Request | None) -> Mapping[str, str]:
 def _build_config(ctx: Context) -> GrafanaConfig:
     request = getattr(ctx.request_context, "request", None)
     if request is None:
-        LOGGER.debug("No HTTP request available in context; using environment configuration only")
+        LOGGER.debug(
+            "No HTTP request available in context; using environment configuration only")
         return grafana_config_from_env()
 
     headers = _request_headers(request)
     config = grafana_config_from_headers(headers)
     if not config.api_key:
-        LOGGER.warning("Grafana API key missing after header merge; defaulting to environment settings")
+        LOGGER.warning(
+            "Grafana API key missing after header merge; defaulting to environment settings")
         config = grafana_config_from_env()
     LOGGER.debug(
         "Resolved Grafana configuration",

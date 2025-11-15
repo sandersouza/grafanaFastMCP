@@ -48,7 +48,8 @@ class FakeLokiClient:
         self.calls: list[tuple[str, Dict[str, Any]]] = []
         self.responses: Dict[str, Any] = {}
 
-    async def request_json(self, path: str, params: Dict[str, Any] | None = None) -> Any:
+    async def request_json(
+            self, path: str, params: Dict[str, Any] | None = None) -> Any:
         self.calls.append((path, params or {}))
         response = self.responses.get(path)
         if isinstance(response, Exception):
@@ -56,7 +57,8 @@ class FakeLokiClient:
         return response
 
 
-def test_loki_client_headers_and_request(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_loki_client_headers_and_request(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     config = SimpleNamespace(
         url="https://grafana.local",
         api_key="token",
@@ -87,14 +89,23 @@ def test_loki_client_headers_and_request(monkeypatch: pytest.MonkeyPatch) -> Non
         async def __aexit__(self, exc_type, exc, tb) -> None:
             return None
 
-        async def get(self, url: str, params: Dict[str, Any] | None = None, headers: Dict[str, Any] | None = None) -> DummyResponse:
+        async def get(self,
+                      url: str,
+                      params: Dict[str,
+                                   Any] | None = None,
+                      headers: Dict[str,
+                                    Any] | None = None) -> DummyResponse:
             self.calls.append((url, params))
             if "error" in url:
                 return DummyResponse(500, {})
             return DummyResponse(200, {"status": "success", "data": {}})
 
     dummy_client = DummyAsyncClient()
-    monkeypatch.setattr(loki.httpx, "AsyncClient", lambda *args, **kwargs: dummy_client)
+    monkeypatch.setattr(
+        loki.httpx,
+        "AsyncClient",
+        lambda *args,
+        **kwargs: dummy_client)
 
     client = loki.LokiClient(SimpleNamespace(), "datasource")
     headers = client._headers
@@ -106,7 +117,8 @@ def test_loki_client_headers_and_request(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 @pytest.fixture
-def ctx(monkeypatch: pytest.MonkeyPatch) -> tuple[SimpleNamespace, FakeLokiClient]:
+def ctx(
+        monkeypatch: pytest.MonkeyPatch) -> tuple[SimpleNamespace, FakeLokiClient]:
     fake_client = FakeLokiClient()
 
     async def create_client(_ctx: Any, _uid: str) -> FakeLokiClient:
@@ -118,35 +130,72 @@ def ctx(monkeypatch: pytest.MonkeyPatch) -> tuple[SimpleNamespace, FakeLokiClien
 
 def test_list_label_items(ctx: tuple[SimpleNamespace, FakeLokiClient]) -> None:
     ctx_obj, client = ctx
-    client.responses["/loki/api/v1/labels"] = {"status": "success", "data": ["job", "env"]}
-    labels = asyncio.run(loki._list_label_items(ctx_obj, "uid", "/loki/api/v1/labels", "2024-01-01T00:00:00Z", "2024-01-01T01:00:00Z"))
+    client.responses["/loki/api/v1/labels"] = {
+        "status": "success", "data": ["job", "env"]}
+    labels = asyncio.run(
+        loki._list_label_items(
+            ctx_obj,
+            "uid",
+            "/loki/api/v1/labels",
+            "2024-01-01T00:00:00Z",
+            "2024-01-01T01:00:00Z"))
     assert labels == ["job", "env"]
     params = client.calls[0][1]
     assert "start" in params and "end" in params
 
     client.responses["/loki/api/v1/labels"] = {"status": "error"}
     with pytest.raises(ValueError):
-        asyncio.run(loki._list_label_items(ctx_obj, "uid", "/loki/api/v1/labels", None, None))
+        asyncio.run(
+            loki._list_label_items(
+                ctx_obj,
+                "uid",
+                "/loki/api/v1/labels",
+                None,
+                None))
 
 
-def test_query_range_and_stats(ctx: tuple[SimpleNamespace, FakeLokiClient]) -> None:
+def test_query_range_and_stats(
+        ctx: tuple[SimpleNamespace, FakeLokiClient]) -> None:
     ctx_obj, client = ctx
     client.responses["/loki/api/v1/query_range"] = {
         "status": "success",
         "data": {"result": [{"stream": {}, "values": []}]},
     }
-    result = asyncio.run(loki._query_range(ctx_obj, "uid", "{job=\"api\"}", None, None, limit=5, direction="forward"))
+    result = asyncio.run(
+        loki._query_range(
+            ctx_obj,
+            "uid",
+            "{job=\"api\"}",
+            None,
+            None,
+            limit=5,
+            direction="forward"))
     assert isinstance(result, list)
     params = client.calls[-1][1]
     assert params["limit"] == "5"
 
-    asyncio.run(loki._query_range(ctx_obj, "uid", "{job=\"api\"}", None, None, limit=1000, direction=None))
+    asyncio.run(
+        loki._query_range(
+            ctx_obj,
+            "uid",
+            "{job=\"api\"}",
+            None,
+            None,
+            limit=1000,
+            direction=None))
     params_capped = client.calls[-1][1]
     assert params_capped["limit"] == str(loki._MAX_LOG_LIMIT)
     assert params_capped["direction"] == "backward"
 
-    client.responses["/loki/api/v1/index/stats"] = {"summary": {"bytesProcessed": 10}}
-    stats = asyncio.run(loki._query_stats(ctx_obj, "uid", "{job=\"api\"}", None, None))
+    client.responses["/loki/api/v1/index/stats"] = {
+        "summary": {"bytesProcessed": 10}}
+    stats = asyncio.run(
+        loki._query_stats(
+            ctx_obj,
+            "uid",
+            "{job=\"api\"}",
+            None,
+            None))
     assert stats["summary"]["bytesProcessed"] == 10
 
 

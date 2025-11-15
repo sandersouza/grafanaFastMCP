@@ -11,7 +11,9 @@ import pytest
 from app import instructions
 
 
-def test_load_instructions_prefers_env_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_instructions_prefers_env_path(
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch) -> None:
     target = tmp_path / "instructions.md"
     target.write_text("Custom instructions", encoding="utf-8")
     monkeypatch.setenv("MCP_INSTRUCTIONS_PATH", str(target))
@@ -19,14 +21,16 @@ def test_load_instructions_prefers_env_path(tmp_path: Path, monkeypatch: pytest.
     assert instructions.load_instructions() == "Custom instructions"
 
 
-def test_load_instructions_falls_back_to_default(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_instructions_falls_back_to_default(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("MCP_INSTRUCTIONS_PATH", raising=False)
     instructions.load_instructions.cache_clear()
     content = instructions.load_instructions()
     assert "Dashboards" in content
 
 
-def test_app_module_entrypoint_invokes_main(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_app_module_entrypoint_invokes_main(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     called = {}
 
     def fake_main() -> None:
@@ -37,7 +41,8 @@ def test_app_module_entrypoint_invokes_main(monkeypatch: pytest.MonkeyPatch) -> 
     assert called.get("app") is True
 
 
-def test_run_app_entrypoint_invokes_main(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_app_entrypoint_invokes_main(
+        monkeypatch: pytest.MonkeyPatch) -> None:
     called = {}
 
     def fake_main() -> None:

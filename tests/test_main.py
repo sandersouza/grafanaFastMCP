@@ -27,7 +27,9 @@ def test_parse_address_rejects_invalid_values(value: str) -> None:
         main_module._parse_address(value)
 
 
-def test_main_prints_version_and_exits(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_prints_version_and_exits(
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str]) -> None:
     def _unexpected_create_app(**_: object) -> None:
         raise AssertionError("create_app should not be called")
 
@@ -39,9 +41,12 @@ def test_main_prints_version_and_exits(monkeypatch: pytest.MonkeyPatch, capsys: 
     assert captured.out.strip() == __version__
 
 
-def test_main_runs_server_with_cli_overrides(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_main_runs_server_with_cli_overrides(
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path) -> None:
     env_path = tmp_path / "custom.env"
-    env_path.write_text("LOG_LEVEL=warning\nTRANSPORT=sse\nSTREAMABLE_HTTP_PATH=/env\n")
+    env_path.write_text(
+        "LOG_LEVEL=warning\nTRANSPORT=sse\nSTREAMABLE_HTTP_PATH=/env\n")
 
     created: dict[str, object] = {}
 
@@ -55,7 +60,11 @@ def test_main_runs_server_with_cli_overrides(monkeypatch: pytest.MonkeyPatch, tm
             )
             self.run_calls: list[tuple[str, str | None]] = []
 
-        def run(self, transport: str, *, mount_path: str | None = None) -> None:
+        def run(
+                self,
+                transport: str,
+                *,
+                mount_path: str | None = None) -> None:
             self.run_calls.append((transport, mount_path))
 
     def fake_create_app(**kwargs: object) -> DummyApp:
@@ -154,7 +163,11 @@ def test_main_logs_when_stdio_transport_ignores_base_path(
             )
             self.run_calls: list[tuple[str, str | None]] = []
 
-        def run(self, transport: str, *, mount_path: str | None = None) -> None:
+        def run(
+                self,
+                transport: str,
+                *,
+                mount_path: str | None = None) -> None:
             self.run_calls.append((transport, mount_path))
 
     app = DummyApp()
@@ -192,7 +205,9 @@ def test_main_logs_when_stdio_transport_ignores_base_path(
     assert "Ignoring base path" in caplog.text
 
 
-def test_main_frozen_defaults_to_stdio(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_main_frozen_defaults_to_stdio(
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path) -> None:
     class DummyApp:
         def __init__(self) -> None:
             self.settings = SimpleNamespace(
@@ -203,7 +218,11 @@ def test_main_frozen_defaults_to_stdio(monkeypatch: pytest.MonkeyPatch, tmp_path
             )
             self.run_calls: list[tuple[str, str | None]] = []
 
-        def run(self, transport: str, *, mount_path: str | None = None) -> None:
+        def run(
+                self,
+                transport: str,
+                *,
+                mount_path: str | None = None) -> None:
             self.run_calls.append((transport, mount_path))
 
     app = DummyApp()

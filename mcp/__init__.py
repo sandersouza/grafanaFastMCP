@@ -73,4 +73,3 @@ else:  # pragma: no cover - exercised indirectly through the test-suite stubs
     from . import server as server  # type: ignore=unused-ignore  # noqa: F401
 
     __all__ = ["server"]
-

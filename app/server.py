@@ -45,7 +45,10 @@ def _join_path(base: str, segment: str) -> str:
     return f"{base_part}/{segment_part}"
 
 
-def _normalize_streamable_http_path(path: str, mount_path: str, default_segment: str) -> str:
+def _normalize_streamable_http_path(
+        path: str,
+        mount_path: str,
+        default_segment: str) -> str:
     """Resolve the streamable HTTP path, supporting relative or absolute values."""
 
     value = path or default_segment
@@ -74,20 +77,25 @@ def _register_streamable_http_alias(app: FastMCP) -> None:
         from starlette.responses import PlainTextResponse
         from starlette.routing import Route
     except Exception:  # pragma: no cover - optional runtime dependency
-        LOGGER.debug("Streamable HTTP alias disabled: Starlette not available", exc_info=True)
+        LOGGER.debug(
+            "Streamable HTTP alias disabled: Starlette not available",
+            exc_info=True)
         return
 
     try:
         from mcp.server.fastmcp.server import StreamableHTTPASGIApp
     except Exception:  # pragma: no cover - optional runtime dependency
-        LOGGER.debug("Streamable HTTP alias disabled: FastMCP server module unavailable", exc_info=True)
+        LOGGER.debug(
+            "Streamable HTTP alias disabled: FastMCP server module unavailable",
+            exc_info=True)
         return
 
     class _StreamableHTTPLinkAlias:
         def __init__(self, fastmcp_app: FastMCP) -> None:
             self._fastmcp = fastmcp_app
 
-        async def __call__(self, scope, receive, send) -> None:  # type: ignore[no-untyped-def]
+        # type: ignore[no-untyped-def]
+        async def __call__(self, scope, receive, send) -> None:
             fastmcp_app = self._fastmcp
             if getattr(fastmcp_app, "_session_manager", None) is None:
                 fastmcp_app.streamable_http_app()

@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Sync Copilot Instructions",
+      "type": "shell",
+      "command": "python3",
+      "args": ["${workspaceFolder}/scripts/sync_copilot_instructions.py"],
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
