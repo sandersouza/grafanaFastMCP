@@ -1,9 +1,5 @@
 [flake8]
 max-line-length = 132
-exclude = 
-    .git,
-    __pycache__,
-    .venv,
-    .vscode,
-    tests,
-    *cache*
+ignore = W503
+exclude = .venv,venv,env,ENV,build,dist,*.egg-info,__pycache__,.git,*.pyc,.pytest_cache
+per-file-ignores = __init__.py:F401

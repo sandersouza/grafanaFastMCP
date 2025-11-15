@@ -1,0 +1,6 @@
+projectKey=grafana-fastmcp
+serverUrl=http://127.0.0.1:9000
+serverVersion=25.9.0.112764
+dashboardUrl=http://127.0.0.1:9000/dashboard?id=grafana-fastmcp
+ceTaskId=4b2c0bbf-08a0-418d-9377-4dbc1875de05
+ceTaskUrl=http://127.0.0.1:9000/api/ce/task?id=4b2c0bbf-08a0-418d-9377-4dbc1875de05

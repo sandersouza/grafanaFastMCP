@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 from app.config import (
     GRAFANA_TLS_CA_FILE_ENV,
     GRAFANA_TLS_CERT_FILE_ENV,

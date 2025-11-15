@@ -208,8 +208,8 @@ def main(argv: list[str] | None = None) -> None:
         "transport": os.getenv("TRANSPORT"),
         "streamable_http_path": os.getenv("STREAMABLE_HTTP_PATH"),
     }
-    parser.set_defaults(**{key: value for key,
-                           value in env_defaults.items() if value})
+
+    parser.set_defaults(**{key: value for key, value in env_defaults.items() if value})
 
     args = parser.parse_args(argv)
 
