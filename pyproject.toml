@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "grafana-fastmcp"
-version = "1.2.1"
+dynamic = ["version"]
 description = "Python Grafana FastMCP server/CLI with SSE, Streamable HTTP and STDIO transports"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -50,6 +50,9 @@ packages = [
   "app",
   "mcp"
 ]
+
+[tool.hatch.version]
+path = "version.py"
 
 # uv dependency groups for dev/test/lint flows
 [tool.uv]
