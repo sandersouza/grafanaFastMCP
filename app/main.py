@@ -144,7 +144,7 @@ def main(argv: list[str] | None = None) -> None:
         "transport": os.getenv("TRANSPORT"),
         "streamable_http_path": os.getenv("STREAMABLE_HTTP_PATH"),
     }
-    parser.set_defaults(**{key: value for key, value in env_defaults.items() if value })
+    parser.set_defaults(**{key: value for key, value in env_defaults.items() if value})
 
     args = parser.parse_args(argv)
 
@@ -189,7 +189,7 @@ def main(argv: list[str] | None = None) -> None:
         log_level=log_level_name,
         debug=args.debug,
     )
-    
+
     logger = logging.getLogger(__name__)
     if transport == "sse":
         logger.info("SSE endpoint available at '%s' (messages at '%s')", app.settings.sse_path, app.settings.message_path)
@@ -209,6 +209,7 @@ def main(argv: list[str] | None = None) -> None:
         logger.info("Received interrupt signal, shutting down Grafana FastMCP server...")
         _request_shutdown(app, transport)
         logger.info("Grafana FastMCP server stopped")
+
 
 if __name__ == "__main__":  # pragma: no cover - manual execution
     main()

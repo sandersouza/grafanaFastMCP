@@ -19,6 +19,10 @@ GRAFANA_USERNAME_ENV = "GRAFANA_USERNAME"
 GRAFANA_PASSWORD_ENV = "GRAFANA_PASSWORD"
 GRAFANA_ACCESS_TOKEN_ENV = "GRAFANA_ACCESS_TOKEN"
 GRAFANA_ID_TOKEN_ENV = "GRAFANA_ID_TOKEN"
+GRAFANA_TLS_CERT_FILE_ENV = "GRAFANA_TLS_CERT_FILE"
+GRAFANA_TLS_KEY_FILE_ENV = "GRAFANA_TLS_KEY_FILE"
+GRAFANA_TLS_CA_FILE_ENV = "GRAFANA_TLS_CA_FILE"
+GRAFANA_TLS_SKIP_VERIFY_ENV = "GRAFANA_TLS_SKIP_VERIFY"
 
 GRAFANA_URL_HEADER = "x-grafana-url"
 GRAFANA_API_KEY_HEADER = "x-grafana-api-key"
@@ -111,6 +115,21 @@ def grafana_config_from_env() -> GrafanaConfig:
         access_token=access_token,
         id_token=id_token,
     )
+    # TLS configuration from environment
+    cert_file = os.getenv(GRAFANA_TLS_CERT_FILE_ENV, "").strip()
+    key_file = os.getenv(GRAFANA_TLS_KEY_FILE_ENV, "").strip()
+    ca_file = os.getenv(GRAFANA_TLS_CA_FILE_ENV, "").strip()
+    skip_verify_raw = os.getenv(GRAFANA_TLS_SKIP_VERIFY_ENV, "").strip().lower()
+    skip_verify = False
+    if skip_verify_raw in ("1", "true", "yes", "on"):
+        skip_verify = True
+    if cert_file or key_file or ca_file or skip_verify:
+        config.tls_config = TLSConfig(
+            cert_file=cert_file,
+            key_file=key_file,
+            ca_file=ca_file,
+            skip_verify=skip_verify,
+        )
     LOGGER.debug(
         "Final GrafanaConfig from environment",
         extra={
@@ -135,7 +154,8 @@ def _decode_basic_auth(value: str) -> Optional[Tuple[str, str]]:
     return username, password
 
 
-def _extract_basic_auth(headers: Mapping[str, str]) -> Optional[Tuple[str, str]]:
+def _extract_basic_auth(
+        headers: Mapping[str, str]) -> Optional[Tuple[str, str]]:
     auth = headers.get(AUTHORIZATION_HEADER)
     if not auth:
         return None
@@ -154,20 +174,26 @@ def _extract_bearer_token(headers: Mapping[str, str]) -> str:
 
 def grafana_config_from_headers(headers: Mapping[str, str]) -> GrafanaConfig:
     env_config = grafana_config_from_env()
-    lowered: MutableMapping[str, str] = {k.lower(): v for k, v in headers.items()}
+    lowered: MutableMapping[str, str] = {
+        k.lower(): v for k, v in headers.items()}
 
     url = lowered.get(GRAFANA_URL_HEADER, env_config.url)
     url = _sanitize_url(url) if url else env_config.url
 
-    api_key = lowered.get(GRAFANA_API_KEY_HEADER, "").strip() or env_config.api_key
+    api_key = lowered.get(
+        GRAFANA_API_KEY_HEADER,
+        "").strip() or env_config.api_key
 
     basic_auth = _extract_basic_auth(lowered) or env_config.basic_auth
 
     access_token = lowered.get(GRAFANA_ACCESS_TOKEN_HEADER, "").strip()
     if not access_token:
-        access_token = env_config.access_token or _extract_bearer_token(lowered)
+        access_token = env_config.access_token or _extract_bearer_token(
+            lowered)
 
-    id_token = lowered.get(GRAFANA_ID_HEADER, "").strip() or env_config.id_token
+    id_token = lowered.get(
+        GRAFANA_ID_HEADER,
+        "").strip() or env_config.id_token
 
     return GrafanaConfig(
         url=url or DEFAULT_GRAFANA_URL,

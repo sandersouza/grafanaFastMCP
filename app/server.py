@@ -118,6 +118,7 @@ def _register_streamable_http_alias(app: FastMCP) -> None:
         )
     )
 
+
 def create_app(
     *,
     host: str,

@@ -7,7 +7,7 @@ name = "grafana-fastmcp"
 version = "1.2.1"
 description = "Python Grafana FastMCP server/CLI with SSE, Streamable HTTP and STDIO transports"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
   { name = "Alessander de Souza Goulart" }
@@ -16,6 +16,8 @@ keywords = ["grafana", "mcp", "observability", "prometheus", "loki", "pyroscope"
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "License :: OSI Approved :: Apache Software License",
   "Environment :: Console",
@@ -23,15 +25,15 @@ classifiers = [
   "Topic :: Software Development :: Libraries"
 ]
 dependencies = [
-  "httpx",
-  "mcp",
-  "python-dotenv",
-  "starlette"
+  "httpx>=0.27",
+  "mcp>=0.1.0",
+  "python-dotenv>=1.0",
+  "starlette>=0.31"
 ]
 
 [project.optional-dependencies]
 sse = [
-  "uvicorn"
+  "uvicorn>=0.30"
 ]
 
 [project.scripts]
@@ -59,8 +61,11 @@ dev-dependencies = [
   "ruff"
 ]
 
+[tool.flake8]
+max-line-length = 132
+
 # Optional tool configs (kept minimal; project already has pytest.ini and ruff cache)
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.11"
 strict = false
 warn_unused_ignores = true
