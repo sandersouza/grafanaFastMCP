@@ -293,6 +293,9 @@ Os parâmetros `startTime` e `endTime` aceitam timestamps RFC3339 (por exemplo, 
 - `search_dashboards`: busca dashboards com metadados detalhados e resposta consolidada.
 - `fetch`: recupera dados completos de recursos retornados pelo search (dashboards via `id` ou `uid`).
 
+### System
+- `get_grafana_versions`: retorna a versão e commit do Grafana, além das versões e metadados básicos dos plugins instalados.
+
 ### Sift
 - `list_sift_investigations`: lista investigações recentes do Grafana Sift.
 - `get_sift_investigation`: recupera detalhes de uma investigação específica.
