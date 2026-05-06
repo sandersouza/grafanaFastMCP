@@ -41,7 +41,6 @@ def test_register_all_skips_loki_without_datasource(
 
     assert "query_loki_logs" not in names
     assert "search" in names
-    assert "get_grafana_versions" in names
 
 
 def test_register_all_skips_oncall_without_plugin(
@@ -59,7 +58,6 @@ def test_register_all_skips_oncall_without_plugin(
     assert "list_oncall_schedules" not in names
     assert "create_incident" not in names
     assert "search" in names
-    assert "get_grafana_versions" in names
 
 
 def test_all_tools_define_array_item_schemas(
