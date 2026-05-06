@@ -1,0 +1,37 @@
+{
+  "messages": [
+    {
+      "run_id": "run-specialized-001",
+      "branch": "test/tokenomics-tests-with-instructions",
+      "task_id": "task-001",
+      "stage": "DESIGN",
+      "usage": {
+        "input_tokens": 100,
+        "output_tokens": 20,
+        "output_tokens_details": {
+          "reasoning_tokens": 5
+        }
+      },
+      "total_tokens": 125,
+      "human_prompt_count": 1,
+      "files_changed": []
+    },
+    {
+      "run_id": "run-specialized-001",
+      "branch": "test/tokenomics-tests-with-instructions",
+      "task_id": "task-001",
+      "message": "[TESTING] Run focused pytest checks",
+      "usage": {
+        "prompt_tokens": 50,
+        "completion_tokens": 10
+      },
+      "files_changed": [
+        "tests/test_tools_search.py",
+        "tests/test_tools_search.py"
+      ],
+      "test_loop_count": 1,
+      "result": "pass"
+    }
+  ]
+}
+

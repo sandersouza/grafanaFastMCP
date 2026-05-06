@@ -109,7 +109,7 @@ podman:
 
 .PHONY: clean
 clean:
-	@rm -rf $(VENV)
+	@rm -rf $(VENV) dist build __pycache__ $(PACKAGE_NAME).spec .coverage htmlcov uv.lock
 	@find . -type d -name '__pycache__' -prune -exec rm -rf {} +
 
 .PHONY: clean-docker
