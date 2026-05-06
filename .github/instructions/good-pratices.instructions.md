@@ -1,3 +1,13 @@
+---
+description: "uv and uvx workflow guidance for dependency, packaging, and validation changes."
+name: "uv Good Practices"
+applyTo:
+  - "pyproject.toml"
+  - "uv.lock"
+  - "Makefile"
+  - "README.md"
+  - ".github/workflows/**"
+---
 # Good Practices: uv and uvx
 
 Adopt [uv](https://github.com/astral-sh/uv) as the default dependency and execution manager for development and CI, while keeping compatibility with existing `venv`/`pip` workflows when needed.

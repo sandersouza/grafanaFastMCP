@@ -1,3 +1,11 @@
+---
+description: "Use for GitHub issue, PR, milestone, branch, and local GitHub mirror work."
+name: "GitHub Project Management"
+applyTo:
+  - ".github/**"
+  - "docs/issues/**"
+  - "docs/milestones/**"
+---
 # GitHub Project Management Instructions
 
 ## Purpose

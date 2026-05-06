@@ -17,19 +17,25 @@ For this repository, the most applicable techniques are:
 
 The existing documentation and harness are mostly aligned with this. The main purpose of `docs/project-documentation/` is context compression: it lets agents jump to the relevant module, helper, and test without rediscovering the whole repository.
 
+The first phased comparison showed that specialization can still increase raw input during `DESIGN` and `CODE_COMPLETION`. The mitigation is not more documentation; it is stricter routing:
+
+- `DESIGN` reads only `CONTEXT-PACKS.md`, `SEMANTIC-MAP.md`, one owner file, and one closest test unless blocked.
+- `CODE_COMPLETION` starts from `git diff`, touched files, and failing checks, not from architecture docs.
+- Deep references remain available, but they are opt-in, not the default path.
+
 ## Paper Idea To Repository Mapping
 
 | Paper idea | `grafanaFastMCP` application | Primary artifact | Status |
 | --- | --- | --- | --- |
 | Baseline vs specialized agent | Compare generic and specialized branches from the same base commit. | `tokenomics.experiment/experiment-plan.md` | Covered |
-| Teach the architecture | Document the local runtime architecture and code pattern. | `runtime-architecture.md`, `code-patterns.md` | Covered |
-| Explicit specialization | State this project's domain: FastMCP, Grafana APIs, async Python HTTP, MCP transports. | `AGENTS.md`, `base.md` | Covered |
-| Auto-discovery of patterns | Maintain a durable project map generated from the current codebase. | `docs/project-documentation/` | Covered |
-| Context compression | Replace broad scans with concise maps, matrices, and task entrypoints. | `README.md`, `directory-tree.md`, `tool-modules.md` | Covered |
-| Worktree or bounded-context isolation | Keep edits localized to one subsystem and matching tests. | `agent-onboarding-guide.md` | Partly covered |
-| Review agent vs static analysis | Prefer `uv run pytest` and `uv run ruff check .` before broad review loops. | `testing-and-quality.md` | Covered |
-| Long context vs retrieval | Use narrow `rg` searches and targeted file reads instead of loading the repository. | `agent-onboarding-guide.md` | Covered |
-| Incremental memory | Persist stable decisions, maps, contracts, and experiment results. | `docs/project-documentation/`, `tokenomics.experiment/` | Partly covered |
+| Teach the architecture | Document the local runtime architecture and code pattern. | `ARCHITECTURE.md`, `PATTERNS.md` | Covered |
+| Explicit specialization | State this project's domain: FastMCP, Grafana APIs, async Python HTTP, MCP transports. | `AGENTS.md`, `BASELINE.md` | Covered |
+| Auto-discovery of patterns | Maintain durable maps generated from the current codebase. | `SEMANTIC-MAP.md`, `PATTERNS.md`, `CODE_STYLE.md` | Covered |
+| Context compression | Replace broad scans with task-specific compact packages, maps, matrices, and task entrypoints. | `CONTEXT-PACKS.md`, `README.md`, `DIRECTORY-TREE.md`, `TOOL-MODULES.md`, `SEMANTIC-MAP.md` | Covered |
+| Worktree or bounded-context isolation | Keep edits localized to one subsystem and matching tests. | `WORKTREE-ISOLATION.md`, `ONBOARDING.md` | Covered |
+| Review agent vs static analysis | Prefer `uv run pytest` and `uv run ruff check .` before broad review loops. | `TEST-QUALITY.md` | Covered |
+| Long context vs retrieval | Use narrow `rg` searches and targeted file reads instead of loading the repository. | `ONBOARDING.md`, `SEMANTIC-MAP.md` | Covered |
+| Incremental memory | Persist stable decisions, maps, contracts, known traps, and experiment results. | `MEMORY.md`, `docs/project-documentation/`, `tokenomics.experiment/` | Covered |
 
 ## What Should Not Be Applied Literally
 

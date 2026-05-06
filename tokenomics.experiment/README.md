@@ -33,6 +33,12 @@ The script writes:
 - `normalized.csv`
 - `summary.json`
 
+The normalized records and summary keep raw and cache-aware token views separate:
+
+- raw total: `input_tokens + output_tokens + reasoning_tokens`;
+- cache-aware total: `non_cached_input_tokens + output_tokens + reasoning_tokens`;
+- cache metrics remain `null` when the provider does not report cached input.
+
 ## Check Branch Hygiene
 
 Before collecting logs, check whether a branch is valid for its role:

@@ -6,7 +6,7 @@ All MCP tools live in `app/tools/`. Each module exposes a single `register(app: 
 
 | Module | Tool names | Registration condition |
 | --- | --- | --- |
-| `admin.py` | `list_teams`, `list_users_by_org` | Always registered. |
+| `admin.py` | `list_teams`, `list_users_by_org`, `get_grafana_versions` | Always registered. |
 | `datasources.py` | `list_datasources`, `get_datasource_by_uid`, `get_datasource_by_name` | Always registered. |
 | `dashboard.py` | `get_dashboard_by_uid`, `update_dashboard`, `get_dashboard_panel_queries`, `get_dashboard_property`, `get_dashboard_summary` | Always registered. |
 | `alerting.py` | `list_alert_rules`, `get_alert_rule_by_uid`, `list_contact_points` | Always registered. |
@@ -69,6 +69,15 @@ flowchart LR
 
 Use `search` when a host expects the generic MCP search endpoint. Use `fetch` to retrieve full dashboard payloads from search results.
 
+## Admin Inventory
+
+`admin.py` includes `get_grafana_versions` for compact instance inventory. The tool is always registered and calls:
+
+- `/health` for Grafana `version` and `commit`;
+- `/plugins` for installed plugin/component metadata.
+
+The response is consolidated as `grafana_versions_result` with `grafana`, `plugins`, and `total_count`. Plugin summaries preserve only `id`, `name`, `type`, `enabled`, `pinned`, and `version`, preferring `info.version` before falling back to top-level `version`.
+
 ## Datasource Proxy Tools
 
 Prometheus, Loki, and Pyroscope use Grafana datasource proxy paths:
@@ -104,4 +113,3 @@ flowchart TD
 ```
 
 This prevents hosts from seeing tools that cannot work against the current Grafana instance.
-

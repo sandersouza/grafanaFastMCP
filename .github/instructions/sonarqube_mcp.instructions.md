@@ -1,5 +1,9 @@
 ---
-applyTo: "**/*"
+description: "Use only for explicit SonarQube MCP analysis tasks."
+name: "SonarQube MCP"
+applyTo:
+  - "sonar-project.properties"
+  - ".github/instructions/sonarqube_mcp.instructions.md"
 ---
 
 These are some guidelines when using the SonarQube MCP server.

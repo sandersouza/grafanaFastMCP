@@ -17,6 +17,7 @@ A specialized agent, guided by repository-specific architecture and workflow ins
 The expected reduction should appear mostly in:
 
 - input tokens, because less repeated context needs to be rediscovered;
+- non-cached input tokens, when the provider reports prompt caching;
 - repeated edits to the same files;
 - human prompts needed to correct scope, architecture, or test strategy.
 
@@ -51,9 +52,12 @@ If a raw log does not expose a stage, the normalizer may infer it only from an e
 Required token metrics:
 
 - `input_tokens`
+- `cached_input_tokens`
+- `non_cached_input_tokens`
 - `output_tokens`
 - `reasoning_tokens`
 - `total_tokens`
+- `cache_aware_total_tokens`
 
 Required workflow metrics:
 
@@ -65,6 +69,15 @@ Required workflow metrics:
 - final result: `pass`, `fail`, or `invalid`.
 
 `reasoning_tokens` must be recorded as `null` when unavailable. It must not be converted to `0`, because `0` means the provider explicitly reported no reasoning tokens.
+
+Cache metrics must also be nullable. If the provider does not expose cached input, record `cached_input_tokens`, `non_cached_input_tokens`, and `cache_aware_total_tokens` as `null`.
+
+Reports must separate:
+
+- raw total: `input_tokens + output_tokens + reasoning_tokens`;
+- cache-aware total: `non_cached_input_tokens + output_tokens + reasoning_tokens`.
+
+Conclusions must state which view they use because treatment effects can reverse depending on provider cache pricing.
 
 ## Initial Task Set
 
@@ -85,7 +98,7 @@ Each task must use the same prompt on both branches and the same acceptance chec
 3. Run one task at a time.
 4. Export the raw agent log for each run.
 5. Normalize logs with `scripts/normalize_agent_logs.py`.
-6. Compare totals by branch, task, and stage.
+6. Compare raw and cache-aware totals by branch, task, and stage.
 7. Mark a run invalid if instructions are missing, incorrect, or leaked across branches.
 
 ## Acceptance Criteria
@@ -95,5 +108,6 @@ The experiment is ready to collect data when:
 - the plan, schema, fixed tasks, and normalizer exist under `tokenomics.experiment/`;
 - the normalizer can aggregate totals by branch, task, and stage;
 - missing reasoning tokens remain `null`;
+- missing cache token metrics remain `null`;
 - parser tests pass;
 - branch hygiene can identify instruction contamination before data collection.

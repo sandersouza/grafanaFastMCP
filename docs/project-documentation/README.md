@@ -1,19 +1,23 @@
 # Project Documentation Index
 
-This folder is the fast onboarding map for `grafanaFastMCP`. It documents the project shape, runtime architecture, code patterns, tool domains, test strategy, and development workflow so a person or agent can start coding with minimal rediscovery.
+This folder is a compact routing map for `grafanaFastMCP`. Do not read every file by default.
 
-## Recommended Reading Order
+## Minimum Input Path
 
-1. [Base](./base.md)
-2. [Project Overview](./project-overview.md)
-3. [Directory Tree](./directory-tree.md)
-4. [Runtime Architecture](./runtime-architecture.md)
-5. [Code Patterns](./code-patterns.md)
-6. [Tool Modules](./tool-modules.md)
-7. [Configuration And Security](./configuration-and-security.md)
-8. [Testing And Quality](./testing-and-quality.md)
-9. [Agent Onboarding Guide](./agent-onboarding-guide.md)
-10. [Tokenomics Applicability](./tokenomics-applicability.md)
+1. Pick the task type in [Context Packs](./CONTEXT-PACKS.md).
+2. Locate owner and closest test in [Semantic Map](./SEMANTIC-MAP.md).
+3. Read only the owner file, closest test, and one deep reference if blocked.
+
+## Deep References
+
+Use these only when the compact path is insufficient:
+
+- [Architecture](./ARCHITECTURE.md)
+- [Patterns](./PATTERNS.md)
+- [Tool Modules](./TOOL-MODULES.md)
+- [Testing](./TEST-QUALITY.md)
+- [Config/Security](./CONFIG-SECURITY.md)
+- [Tokenomics Applicability](./TOKENOMICS-APPLICABILITY.md)
 
 ## High-Value Rule For Agents
 
@@ -29,6 +33,6 @@ flowchart LR
     Tool --> Response[Consolidated tool response]
 ```
 
-Avoid broad scans after reading this folder. Use these docs to jump directly to the correct module, helper, and test file.
+Avoid broad scans. `DESIGN` should usually stop after one context pack, the semantic map, one owner file, and one test. `CODE_COMPLETION` should start from `git diff`, not from docs.
 
-For token-cost experiments, use [Tokenomics Applicability](./tokenomics-applicability.md) to verify which paper recommendations are implemented through documentation, which belong in `tokenomics.experiment/`, and which generic architecture examples do not apply to this codebase.
+For token-cost experiments, use [Tokenomics Applicability](./TOKENOMICS-APPLICABILITY.md) to verify which paper recommendations are implemented through documentation, which belong in `tokenomics.experiment/`, and which generic architecture examples do not apply to this codebase.

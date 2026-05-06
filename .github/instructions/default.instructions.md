@@ -7,6 +7,7 @@ These are the default rules for the `grafanaFastMCP` project. They apply to peop
 - Preserve current behavior and compatibility unless the task explicitly changes it.
 - Keep regressions at zero.
 - Follow `AGENTS.md` for project-specific architecture, runtime, and tokenomics constraints.
+- On tokenomics specialized branches, follow `.github/instructions/tokenomics-agent-efficiency.instructions.md` for compact context, Code Completion control, and static review loops.
 - Update `README.md` when a feature changes user-facing setup, commands, configuration, or behavior.
 - Add or update tests for new behavior.
 - Keep documentation clear: use comments, docstrings, and examples only where they add practical value.

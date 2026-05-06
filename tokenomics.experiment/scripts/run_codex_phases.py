@@ -353,6 +353,19 @@ def usage_summary(results: Sequence[PhaseResult]) -> dict[str, Any]:
             value = usage.get(key)
             if isinstance(value, int):
                 totals[key] += value
+    totals["non_cached_input_tokens"] = (
+        totals["input_tokens"] - totals["cached_input_tokens"]
+    )
+    totals["raw_total_tokens"] = (
+        totals["input_tokens"]
+        + totals["output_tokens"]
+        + totals["reasoning_output_tokens"]
+    )
+    totals["cache_aware_total_tokens"] = (
+        totals["non_cached_input_tokens"]
+        + totals["output_tokens"]
+        + totals["reasoning_output_tokens"]
+    )
     return {
         "totals": totals,
         "missing_usage_phases": missing_usage,
@@ -394,6 +407,7 @@ def render_report(manifest: dict[str, Any], summary: dict[str, Any]) -> str:
     total_reasoning = int_value(totals.get("reasoning_output_tokens"))
     total_non_cached = total_input - total_cached
     total_with_reasoning = total_input + total_output + total_reasoning
+    total_cache_aware = total_non_cached + total_output + total_reasoning
     cache_rate = percent(total_cached, total_input)
 
     lines = [
@@ -416,6 +430,7 @@ def render_report(manifest: dict[str, Any], summary: dict[str, Any]) -> str:
         f"- Reasoning output tokens: `{total_reasoning:,}`",
         f"- Input cache rate: `{cache_rate:.1f}%`",
         f"- Input + output + reasoning: `{total_with_reasoning:,}`",
+        f"- Cache-aware input + output + reasoning: `{total_cache_aware:,}`",
         "",
         "## By Phase",
         "",
@@ -461,6 +476,11 @@ def render_report(manifest: dict[str, Any], summary: dict[str, Any]) -> str:
             (
                 "- `Input + output + reasoning` is a reporting total; provider "
                 "billing semantics may treat cached and reasoning tokens differently."
+            ),
+            (
+                "- `Cache-aware input + output + reasoning` replaces input tokens "
+                "with non-cached input tokens. Keep both totals in reports because "
+                "conclusions can change by provider pricing model."
             ),
         ]
     )

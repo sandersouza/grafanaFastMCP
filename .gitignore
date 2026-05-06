@@ -35,6 +35,7 @@ htmlcov/
 *.sqlite3
 
 # Outros
+tokenomics.experiment/raw-runs/*
 .pytest_cache
 .env
 *.pem

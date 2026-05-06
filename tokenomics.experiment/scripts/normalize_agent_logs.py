@@ -39,9 +39,12 @@ class NormalizedRecord:
     stage: str
     message_index: int
     input_tokens: int
+    cached_input_tokens: int | None
+    non_cached_input_tokens: int | None
     output_tokens: int
     reasoning_tokens: int | None
     total_tokens: int
+    cache_aware_total_tokens: int | None
     elapsed_seconds: float | None
     human_prompt_count: int
     files_changed: list[str]
@@ -165,6 +168,17 @@ def normalize_event(
 ) -> NormalizedRecord:
     usage = mapping_at(event, "usage")
     input_tokens = int_from(event, usage, "input_tokens", "prompt_tokens", default=0)
+    cached_input_tokens = nullable_int_from(
+        event,
+        usage,
+        "cached_input_tokens",
+        "cached_prompt_tokens",
+    )
+    non_cached_input_tokens = (
+        None
+        if cached_input_tokens is None
+        else max(input_tokens - cached_input_tokens, 0)
+    )
     output_tokens = int_from(
         event,
         usage,
@@ -176,6 +190,11 @@ def normalize_event(
     total_tokens = int_from(event, usage, "total_tokens", default=-1)
     if total_tokens < 0:
         total_tokens = input_tokens + output_tokens + (reasoning_tokens or 0)
+    cache_aware_total_tokens = (
+        None
+        if non_cached_input_tokens is None
+        else non_cached_input_tokens + output_tokens + (reasoning_tokens or 0)
+    )
 
     files_changed = list_from(event, "files_changed", "changed_files")
 
@@ -197,9 +216,12 @@ def normalize_event(
             first_value(event, "message_index", "index", default=message_index)
         ),
         input_tokens=input_tokens,
+        cached_input_tokens=cached_input_tokens,
+        non_cached_input_tokens=non_cached_input_tokens,
         output_tokens=output_tokens,
         reasoning_tokens=reasoning_tokens,
         total_tokens=total_tokens,
+        cache_aware_total_tokens=cache_aware_total_tokens,
         elapsed_seconds=float_or_none(
             first_value(event, "elapsed_seconds", "duration_seconds", default=None)
         ),
@@ -242,6 +264,17 @@ def int_from(
     if value is None:
         return default
     return int(value)
+
+
+def nullable_int_from(
+    event: dict[str, Any],
+    nested: dict[str, Any],
+    *keys: str,
+) -> int | None:
+    value = first_value(event, *keys, default=None)
+    if value is None:
+        value = first_value(nested, *keys, default=None)
+    return None if value is None else int(value)
 
 
 def reasoning_from(event: dict[str, Any], usage: dict[str, Any]) -> int | None:
@@ -312,7 +345,16 @@ def summarize(records: list[NormalizedRecord]) -> dict[str, Any]:
     totals: dict[str, Any] = {
         "record_count": len(records),
         "total_tokens": sum(record.total_tokens for record in records),
+        "cache_aware_total_tokens": nullable_sum(
+            record.cache_aware_total_tokens for record in records
+        ),
         "input_tokens": sum(record.input_tokens for record in records),
+        "cached_input_tokens": nullable_sum(
+            record.cached_input_tokens for record in records
+        ),
+        "non_cached_input_tokens": nullable_sum(
+            record.non_cached_input_tokens for record in records
+        ),
         "output_tokens": sum(record.output_tokens for record in records),
         "reasoning_tokens": nullable_sum(record.reasoning_tokens for record in records),
         "by_branch": defaultdict(counter_dict),
@@ -328,6 +370,10 @@ def summarize(records: list[NormalizedRecord]) -> dict[str, Any]:
         for bucket in totals[group_name].values():
             if bucket["missing_reasoning_records"] == bucket["record_count"]:
                 bucket["reasoning_tokens"] = None
+            if bucket["missing_cache_records"] == bucket["record_count"]:
+                bucket["cached_input_tokens"] = None
+                bucket["non_cached_input_tokens"] = None
+                bucket["cache_aware_total_tokens"] = None
 
     return json.loads(json.dumps(totals))
 
@@ -336,10 +382,14 @@ def counter_dict() -> dict[str, Any]:
     return {
         "record_count": 0,
         "total_tokens": 0,
+        "cache_aware_total_tokens": 0,
         "input_tokens": 0,
+        "cached_input_tokens": 0,
+        "non_cached_input_tokens": 0,
         "output_tokens": 0,
         "reasoning_tokens": 0,
         "missing_reasoning_records": 0,
+        "missing_cache_records": 0,
         "human_prompt_count": 0,
         "repeated_file_edits": 0,
         "test_loop_count": 0,
@@ -350,7 +400,15 @@ def counter_dict() -> dict[str, Any]:
 def add_record(bucket: dict[str, Any], record: NormalizedRecord) -> None:
     bucket["record_count"] += 1
     bucket["total_tokens"] += record.total_tokens
+    if record.cache_aware_total_tokens is None:
+        bucket["missing_cache_records"] += 1
+    else:
+        bucket["cache_aware_total_tokens"] += record.cache_aware_total_tokens
     bucket["input_tokens"] += record.input_tokens
+    if record.cached_input_tokens is not None:
+        bucket["cached_input_tokens"] += record.cached_input_tokens
+    if record.non_cached_input_tokens is not None:
+        bucket["non_cached_input_tokens"] += record.non_cached_input_tokens
     bucket["output_tokens"] += record.output_tokens
     if record.reasoning_tokens is None:
         bucket["missing_reasoning_records"] += 1
