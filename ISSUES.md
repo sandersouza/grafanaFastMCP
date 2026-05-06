@@ -28,3 +28,13 @@ Adotar o [uv](https://github.com/astral-sh/uv) como gerenciador padrão de depen
 - `uv.lock` presente e atualizado
 - Testes executam com `uv run pytest` sem regressões
 - Compatibilidade com `make venv` preservada
+
+## ✨ Feature: Tool de versões do Grafana
+### Síntese da sessão
+- Implementada a tool `get_grafana_versions` para retornar versão do Grafana via `/api/health` e versões conhecidas de plugins/componentes via `/api/plugins`.
+- A resposta segue o padrão consolidado do projeto com `grafana`, `plugins`, `total_count` e `type`.
+- A normalização aceita payloads de plugins em lista direta, `plugins` ou `items`, preservando `version: null` quando a API não informa versão.
+- Testes focados adicionados para helpers, chamada aos endpoints e registro sem capability gate.
+- Revisão de código executada sem identificar regressões ou escopo acidental na tool; testes focados e suíte completa passaram com `python -m pytest`.
+- Fase `TESTING`: `python -m pytest tests/test_tools_versions.py tests/test_tools_registration.py`, `python -m pytest` e lint focado passaram; `uv` não está instalado e `ruff check .` segue bloqueado por débitos preexistentes fora do escopo.
+- Fase `DOCUMENTATION`: README, issue local e handoff atualizados com contrato da tool, validações executadas e limitações conhecidas.

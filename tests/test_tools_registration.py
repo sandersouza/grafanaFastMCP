@@ -60,6 +60,18 @@ def test_register_all_skips_oncall_without_plugin(
     assert "search" in names
 
 
+def test_register_all_includes_versions_without_optional_capabilities(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    capabilities = _capabilities_with(datasource_types=set(), plugin_ids=set())
+    monkeypatch.setattr(tools, "_resolve_capabilities", lambda: capabilities)
+
+    app = FastMCP()
+    register_all(app)
+    names = _tool_names(app)
+
+    assert "get_grafana_versions" in names
+
+
 def test_all_tools_define_array_item_schemas(
         monkeypatch: pytest.MonkeyPatch) -> None:
     capabilities = _capabilities_with(

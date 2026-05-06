@@ -1,0 +1,71 @@
+{
+  "by_phase": {
+    "CODE_COMPLETION": {
+      "elapsed_seconds": 110.01973933400586,
+      "exit_code": 0,
+      "usage": {
+        "cached_input_tokens": 410624,
+        "input_tokens": 462541,
+        "output_tokens": 4534,
+        "reasoning_output_tokens": 1276
+      }
+    },
+    "CODE_REVIEW": {
+      "elapsed_seconds": 156.21968883401132,
+      "exit_code": 0,
+      "usage": {
+        "cached_input_tokens": 583936,
+        "input_tokens": 667143,
+        "output_tokens": 4936,
+        "reasoning_output_tokens": 1264
+      }
+    },
+    "CODING": {
+      "elapsed_seconds": 163.22526649999782,
+      "exit_code": 0,
+      "usage": {
+        "cached_input_tokens": 533120,
+        "input_tokens": 600816,
+        "output_tokens": 6932,
+        "reasoning_output_tokens": 997
+      }
+    },
+    "DESIGN": {
+      "elapsed_seconds": 78.51768066600198,
+      "exit_code": 0,
+      "usage": {
+        "cached_input_tokens": 248320,
+        "input_tokens": 304801,
+        "output_tokens": 2820,
+        "reasoning_output_tokens": 538
+      }
+    },
+    "DOCUMENTATION": {
+      "elapsed_seconds": 79.58549695799593,
+      "exit_code": 0,
+      "usage": {
+        "cached_input_tokens": 247296,
+        "input_tokens": 290635,
+        "output_tokens": 3415,
+        "reasoning_output_tokens": 402
+      }
+    },
+    "TESTING": {
+      "elapsed_seconds": 130.83349962500506,
+      "exit_code": 0,
+      "usage": {
+        "cached_input_tokens": 249728,
+        "input_tokens": 277484,
+        "output_tokens": 3125,
+        "reasoning_output_tokens": 326
+      }
+    }
+  },
+  "missing_usage_phases": [],
+  "totals": {
+    "cached_input_tokens": 2273024,
+    "input_tokens": 2603420,
+    "output_tokens": 25762,
+    "reasoning_output_tokens": 4803
+  }
+}

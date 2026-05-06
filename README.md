@@ -253,6 +253,11 @@ Os parâmetros `startTime` e `endTime` aceitam timestamps RFC3339 (por exemplo, 
 - `get_datasource_by_uid`: obtém detalhes completos de um datasource pelo UID.
 - `get_datasource_by_name`: obtém detalhes completos de um datasource pelo nome configurado.
 
+### Versions
+- `get_grafana_versions`: retorna a versão do Grafana e versões conhecidas dos plugins/componentes instalados em resposta consolidada.
+
+Esta tool consulta `/api/health` para os metadados do Grafana e `/api/plugins` para os plugins/componentes instalados. O payload consolidado inclui `grafana`, `plugins`, `total_count` e `type`; quando a API do Grafana não informa a versão de um plugin, o campo `version` é retornado como `null`.
+
 ### Incident
 - `list_incidents`: lista incidentes (com filtros de status e drilldown opcional).
 - `get_incident`: recupera detalhes completos de um incidente específico.

@@ -22,6 +22,7 @@ from . import (
     pyroscope,
     search,
     sift,
+    versions,
 )
 from .availability import GrafanaCapabilities, detect_capabilities
 
@@ -98,6 +99,7 @@ def register_all(app: FastMCP) -> None:
         reason="requires a Grafana Pyroscope datasource",
     )
     _register("search", search.register)
+    _register("versions", versions.register)
     _register(
         "sift",
         sift.register,

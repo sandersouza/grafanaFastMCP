@@ -1,0 +1,105 @@
+{
+  "branch": "test/without-agent-instructions",
+  "created_at": "2026-05-06T14:23:51.116466+00:00",
+  "phases": [
+    {
+      "elapsed_seconds": 78.51768066600198,
+      "exit_code": 0,
+      "final_message_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/01-DESIGN.final.md",
+      "index": 1,
+      "phase": "DESIGN",
+      "prompt_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/01-DESIGN.prompt.md",
+      "raw_log_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/01-DESIGN.jsonl",
+      "stderr_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/01-DESIGN.stderr.log",
+      "usage": {
+        "cached_input_tokens": 248320,
+        "input_tokens": 304801,
+        "output_tokens": 2820,
+        "reasoning_output_tokens": 538
+      }
+    },
+    {
+      "elapsed_seconds": 163.22526649999782,
+      "exit_code": 0,
+      "final_message_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/02-CODING.final.md",
+      "index": 2,
+      "phase": "CODING",
+      "prompt_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/02-CODING.prompt.md",
+      "raw_log_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/02-CODING.jsonl",
+      "stderr_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/02-CODING.stderr.log",
+      "usage": {
+        "cached_input_tokens": 533120,
+        "input_tokens": 600816,
+        "output_tokens": 6932,
+        "reasoning_output_tokens": 997
+      }
+    },
+    {
+      "elapsed_seconds": 110.01973933400586,
+      "exit_code": 0,
+      "final_message_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/03-CODE_COMPLETION.final.md",
+      "index": 3,
+      "phase": "CODE_COMPLETION",
+      "prompt_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/03-CODE_COMPLETION.prompt.md",
+      "raw_log_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/03-CODE_COMPLETION.jsonl",
+      "stderr_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/03-CODE_COMPLETION.stderr.log",
+      "usage": {
+        "cached_input_tokens": 410624,
+        "input_tokens": 462541,
+        "output_tokens": 4534,
+        "reasoning_output_tokens": 1276
+      }
+    },
+    {
+      "elapsed_seconds": 156.21968883401132,
+      "exit_code": 0,
+      "final_message_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/04-CODE_REVIEW.final.md",
+      "index": 4,
+      "phase": "CODE_REVIEW",
+      "prompt_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/04-CODE_REVIEW.prompt.md",
+      "raw_log_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/04-CODE_REVIEW.jsonl",
+      "stderr_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/04-CODE_REVIEW.stderr.log",
+      "usage": {
+        "cached_input_tokens": 583936,
+        "input_tokens": 667143,
+        "output_tokens": 4936,
+        "reasoning_output_tokens": 1264
+      }
+    },
+    {
+      "elapsed_seconds": 130.83349962500506,
+      "exit_code": 0,
+      "final_message_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/05-TESTING.final.md",
+      "index": 5,
+      "phase": "TESTING",
+      "prompt_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/05-TESTING.prompt.md",
+      "raw_log_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/05-TESTING.jsonl",
+      "stderr_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/05-TESTING.stderr.log",
+      "usage": {
+        "cached_input_tokens": 249728,
+        "input_tokens": 277484,
+        "output_tokens": 3125,
+        "reasoning_output_tokens": 326
+      }
+    },
+    {
+      "elapsed_seconds": 79.58549695799593,
+      "exit_code": 0,
+      "final_message_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/06-DOCUMENTATION.final.md",
+      "index": 6,
+      "phase": "DOCUMENTATION",
+      "prompt_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/06-DOCUMENTATION.prompt.md",
+      "raw_log_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/06-DOCUMENTATION.jsonl",
+      "stderr_file": "/Users/sandersouza/Developer/grafanaFastMCP/tokenomics.experiment/raw-runs/token-cost.without-instructions.phased/06-DOCUMENTATION.stderr.log",
+      "usage": {
+        "cached_input_tokens": 247296,
+        "input_tokens": 290635,
+        "output_tokens": 3415,
+        "reasoning_output_tokens": 402
+      }
+    }
+  ],
+  "run_id": "token-cost.without-instructions.phased",
+  "task": "Crie nova tool que retorne a vers\u00e3o dos componentes/plugins do Grafana e do pr\u00f3prio Grafana.",
+  "workspace": "/Users/sandersouza/Developer/grafanaFastMCP"
+}
