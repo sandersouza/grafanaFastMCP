@@ -17,6 +17,8 @@ These are the default rules for the `grafanaFastMCP` project. They apply to peop
 - Don't document files and folders exclude in .gitignore, except when they are relevant for the project and not self-explanatory.
 - When in doubt about documentation placement, prefer `docs/project-documentation/` for technical details and `docs/handoff/` for branch-specific context.
 - When in doubt about documentation content, prefer concise, relevant information with references to consulted files or modules over excessive historical detail.
+- Always active virtual environments when running project commands, even if they are not strictly required, to ensure consistent dependencies and behavior.
+- If virtual environment not exists, create it with `make venv`.
 
 ## Local Workflow
 - Prefer `uv` for dependency management and command execution. See `AGENTS.md` and `.github/instructions/good-pratices.instructions.md` for project-specific validation commands.\
